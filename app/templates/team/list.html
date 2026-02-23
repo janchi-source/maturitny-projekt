@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Team | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Team</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Members, roles, and workload overview</p>
+    </div>
+</div>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+            <tr class="bg-slate-50 dark:bg-border-dark/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-border-dark">
+                <th class="px-6 py-3">Username</th>
+                <th class="px-6 py-3">Email</th>
+                <th class="px-6 py-3">Role</th>
+                <th class="px-6 py-3 text-right">Projects</th>
+                <th class="px-6 py-3 text-right">Tasks</th>
+                <th class="px-6 py-3">Joined</th>
+                {% if is_admin %}<th class="px-6 py-3 text-right">Actions</th>{% endif %}
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-border-dark text-sm font-medium">
+            {% for row in member_stats %}
+                {% set member = row.user %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+                    <td class="px-6 py-4 font-bold">{{ member.username }}</td>
+                    <td class="px-6 py-4">{{ member.email }}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-1 rounded text-[10px] font-black uppercase {% if member.role.value == 'admin' %}bg-primary/10 text-primary{% elif member.role.value == 'owner' %}bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500{% else %}bg-slate-100 dark:bg-border-dark text-slate-600 dark:text-slate-300{% endif %}">
+                            {{ member.role.value|replace('_', ' ') }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">{{ row.project_count }}</td>
+                    <td class="px-6 py-4 text-right">{{ row.task_count }}</td>
+                    <td class="px-6 py-4">{{ member.created_at.strftime('%Y-%m-%d') }}</td>
+                    {% if is_admin %}
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex justify-end gap-2">
+                                <a href="{{ url_for('team.edit', user_id=member.id) }}" class="px-3 py-1.5 border border-slate-200 dark:border-border-dark rounded text-xs font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Edit</a>
+                                <form method="post" action="{{ url_for('team.delete', user_id=member.id) }}" onsubmit="return confirm('Remove this user?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-500">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    {% endif %}
+                </tr>
+            {% else %}
+                <tr><td class="px-6 py-6 text-slate-500" colspan="7">No users found.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

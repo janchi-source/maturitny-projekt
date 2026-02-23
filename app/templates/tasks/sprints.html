@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Sprints | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Sprint Planning</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Backlog grooming, sprint creation, and status updates</p>
+    </div>
+    <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Back to Tasks</a>
+</div>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 mb-6">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <select name="project" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+            <option value="">Select project...</option>
+            {% for project in projects %}
+                <option value="{{ project.id }}" {% if selected_project and selected_project.id == project.id %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Load Planning</button>
+    </form>
+</section>
+
+{% if selected_project %}
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 mb-6">
+    <h3 class="text-lg font-bold mb-4">Create Sprint for {{ selected_project.name }}</h3>
+    <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="project_id" value="{{ selected_project.id }}">
+        <input name="name" required placeholder="Sprint name" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+        <input name="goal" placeholder="Sprint goal" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+        <input type="date" name="start_date" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+        <input type="date" name="end_date" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+        <button type="submit" class="md:col-span-2 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Create Sprint</button>
+    </form>
+</section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <h3 class="text-lg font-bold mb-4">Sprints</h3>
+        <div class="space-y-3">
+            {% for sprint in sprints %}
+                <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                    <p class="font-bold">{{ sprint.name }}</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ sprint.status.value|title }} • {{ sprint.start_date or '-' }} → {{ sprint.end_date or '-' }}</p>
+                    {% if sprint.goal %}<p class="text-sm mt-2">{{ sprint.goal }}</p>{% endif %}
+                    <form method="post" action="{{ url_for('tasks.update_sprint_status', sprint_id=sprint.id) }}" class="mt-3 flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="status" class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-xs">
+                            {% for value in sprint_status_values %}
+                                <option value="{{ value }}" {% if sprint.status.value == value %}selected{% endif %}>{{ value|title }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="px-3 py-2 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-xs font-bold">Update</button>
+                    </form>
+                </div>
+            {% else %}
+                <p class="text-sm text-slate-500">No sprints yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <h3 class="text-lg font-bold mb-4">Backlog (No Sprint)</h3>
+        <div class="space-y-2">
+            {% for task in backlog_tasks %}
+                <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-border-dark/30">
+                    <p class="font-semibold text-sm">{{ task.title }}</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ task.status.value|replace('_', ' ')|title }} • {{ task.priority.value|title }}</p>
+                </a>
+            {% else %}
+                <p class="text-sm text-slate-500">No backlog tasks.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}Task Reports | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Task Reporting</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Burndown, throughput, cycle time, and completion trends</p>
+    </div>
+    <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Back to Tasks</a>
+</div>
+
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Total Tasks</p><p class="text-2xl font-black mt-2">{{ total_tasks }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Completed</p><p class="text-2xl font-black mt-2">{{ done_tasks }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Overdue</p><p class="text-2xl font-black mt-2">{{ overdue_tasks }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Avg Cycle (h)</p><p class="text-2xl font-black mt-2">{{ avg_cycle_hours }}</p></div>
+</section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <h3 class="text-lg font-bold mb-4">Throughput (last 14 days)</h3>
+        <p class="text-3xl font-black">{{ throughput }}</p>
+        <p class="text-sm text-slate-500 mt-1">Done-status transitions tracked in activity timeline.</p>
+    </div>
+
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <h3 class="text-lg font-bold mb-4">Burndown by Active Sprint</h3>
+        <div class="space-y-3">
+            {% for item in burndown %}
+                <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                    <p class="font-bold">{{ item.sprint.name }}</p>
+                    <p class="text-xs text-slate-500 mt-1">Remaining {{ item.remaining }} / {{ item.total }}</p>
+                </div>
+            {% else %}
+                <p class="text-sm text-slate-500">No active sprints available.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 mt-6">
+    <h3 class="text-lg font-bold mb-4">Completion Trend (7 days)</h3>
+    <div class="space-y-2">
+        {% for day in completion_trend %}
+            <div class="flex items-center justify-between text-sm border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2">
+                <span>{{ day.date }}</span>
+                <span class="font-bold">{{ day.completed }} completed</span>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

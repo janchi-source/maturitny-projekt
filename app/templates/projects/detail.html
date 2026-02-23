@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ project.name }} | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">{{ project.name }}</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium mt-1">{{ project.description or 'No description provided.' }}</p>
+    </div>
+    <div class="flex gap-2">
+        <form method="post" action="{{ url_for('projects.toggle_watch', project_id=project.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="px-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">{% if is_watching %}Unwatch{% else %}Watch{% endif %}</button>
+        </form>
+        <a href="{{ url_for('projects.edit', project_id=project.id) }}" class="px-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Edit</a>
+        {% if can_manage %}
+            <form method="post" action="{{ url_for('projects.delete', project_id=project.id) }}" onsubmit="return confirm('Delete this project?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500">Delete</button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+<section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Status</p>
+        <p class="mt-2 text-lg font-bold">{{ project.status.value|title }}</p>
+    </div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Progress</p>
+        <p class="mt-2 text-lg font-bold">{{ project.progress }}%</p>
+        <div class="w-full bg-slate-100 dark:bg-border-dark h-2 rounded-full overflow-hidden mt-2">
+            <div class="bg-primary h-full rounded-full" style="width: {{ project.progress }}%"></div>
+        </div>
+    </div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Owner</p>
+        <p class="mt-2 text-lg font-bold">{{ project.owner.username if project.owner else 'Unknown' }}</p>
+    </div>
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+    <div class="p-4 border-b border-slate-200 dark:border-border-dark flex flex-wrap gap-2">
+        <a href="{{ url_for('projects.detail', project_id=project.id, tab='tasks') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'tasks' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Tasks</a>
+        <a href="{{ url_for('projects.detail', project_id=project.id, tab='documents') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'documents' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Documents</a>
+        <a href="{{ url_for('projects.detail', project_id=project.id, tab='team') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'team' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Team</a>
+    </div>
+
+    <div class="p-5">
+        {% if active_tab == 'tasks' %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                    <tr class="text-[10px] uppercase tracking-wider font-bold text-slate-500 border-b border-slate-200 dark:border-border-dark">
+                        <th class="px-3 py-2">Task</th>
+                        <th class="px-3 py-2">Assignee</th>
+                        <th class="px-3 py-2">Status</th>
+                        <th class="px-3 py-2 text-right">Progress</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-border-dark text-sm">
+                    {% for task in tasks %}
+                        <tr>
+                            <td class="px-3 py-3">{{ task.title }}</td>
+                            <td class="px-3 py-3">{{ task.assignee.username if task.assignee else 'Unassigned' }}</td>
+                            <td class="px-3 py-3">{{ task.status.value|replace('_', ' ')|title }}</td>
+                            <td class="px-3 py-3 text-right">{{ task.progress }}%</td>
+                        </tr>
+                    {% else %}
+                        <tr><td class="px-3 py-4 text-slate-500" colspan="4">No tasks for this project.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% elif active_tab == 'documents' %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {% for document in documents %}
+                    <div class="border border-slate-200 dark:border-border-dark rounded-lg p-4">
+                        <p class="font-bold">{{ document.original_name }}</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ document.file_type.value|upper }} • {{ document.created_at.strftime('%Y-%m-%d') }}</p>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No documents for this project.</p>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="space-y-6">
+                <div>
+                    <h4 class="text-sm font-black uppercase tracking-wider mb-3">Project Watchers</h4>
+                    <div class="flex flex-wrap gap-2">
+                        {% for watcher in watchers %}
+                            <span class="px-2 py-1 rounded bg-slate-100 dark:bg-border-dark text-xs font-semibold">{{ watcher.username }}</span>
+                        {% else %}
+                            <p class="text-sm text-slate-500">No watchers yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-black uppercase tracking-wider mb-3">Permissions Matrix</h4>
+                    {% if can_manage %}
+                        <form method="post" action="{{ url_for('projects.upsert_member', project_id=project.id) }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <select name="user_id" required class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+                                <option value="">Select user</option>
+                                {% for user in users_for_membership %}
+                                    <option value="{{ user.id }}">{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <select name="role" required class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+                                {% for role in membership_roles %}
+                                    <option value="{{ role }}">{{ role|title }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Add / Update Member</button>
+                        </form>
+                    {% endif %}
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {% for member in team_members %}
+                            {% set membership = membership_map.get(member.id) %}
+                            <div class="border border-slate-200 dark:border-border-dark rounded-lg p-4">
+                                <p class="font-bold">{{ member.username }}</p>
+                                <p class="text-xs text-slate-500 mt-1">{{ (membership.role.value if membership else 'owner')|replace('_', ' ')|title }}</p>
+                                {% if can_manage and membership %}
+                                    <form method="post" action="{{ url_for('projects.remove_member', project_id=project.id, user_id=member.id) }}" class="mt-3">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="text-xs text-red-500 font-semibold">Remove</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <p class="text-sm text-slate-500">No team members assigned yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-sm font-black uppercase tracking-wider mb-3">Automation Rules</h4>
+                    <form method="post" action="{{ url_for('tasks.create_automation_rule') }}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                        <select name="trigger_type" required class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-xs">
+                            <option value="status_changed">status_changed</option>
+                            <option value="priority_changed">priority_changed</option>
+                            <option value="task_updated">task_updated</option>
+                        </select>
+                        <input name="condition_value" placeholder="Condition value (optional)" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-xs">
+                        <select name="action_type" required class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-xs">
+                            <option value="assign_user">assign_user</option>
+                            <option value="add_label">add_label</option>
+                            <option value="set_due_days">set_due_days</option>
+                            <option value="set_priority">set_priority</option>
+                        </select>
+                        <input name="action_value" placeholder="Action value" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-xs">
+                        <button type="submit" class="px-4 py-2.5 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-xs font-bold">Create Rule</button>
+                    </form>
+
+                    <div class="space-y-2">
+                        {% for rule in automation_rules %}
+                            <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3 flex flex-wrap items-center justify-between gap-3">
+                                <p class="text-sm"><span class="font-bold">{{ rule.trigger_type }}</span> → {{ rule.action_type }} {% if rule.action_value %}({{ rule.action_value }}){% endif %}</p>
+                                <div class="flex gap-2">
+                                    <form method="post" action="{{ url_for('tasks.toggle_automation_rule', rule_id=rule.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-2 py-1 rounded text-xs font-bold {{ 'bg-emerald-600 text-white' if rule.is_active else 'bg-slate-100 dark:bg-border-dark' }}">{{ 'Active' if rule.is_active else 'Inactive' }}</button>
+                                    </form>
+                                    <form method="post" action="{{ url_for('tasks.delete_automation_rule', rule_id=rule.id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="px-2 py-1 rounded text-xs font-bold bg-red-600 text-white">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p class="text-sm text-slate-500">No automation rules configured yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

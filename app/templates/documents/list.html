@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% from 'components/document_card.html' import document_card %}
+
+{% block title %}Documents | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Documents</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Search and manage uploaded PDF/DOCX knowledge base</p>
+    </div>
+    <a href="{{ url_for('documents.upload') }}" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Upload Document</a>
+</div>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-4 sm:p-5 mb-6">
+    <form method="get" class="grid grid-cols-1 lg:grid-cols-5 gap-3">
+        <input name="search" value="{{ search }}" placeholder="Search name..." class="lg:col-span-2 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+
+        <select name="project" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+            <option value="">All projects</option>
+            {% for project in projects %}
+                <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+
+        <select name="file_type" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+            <option value="">All file types</option>
+            {% for value in file_type_values %}
+                <option value="{{ value }}" {% if file_type_filter == value %}selected{% endif %}>{{ value|upper }}</option>
+            {% endfor %}
+        </select>
+
+        <input name="tag" value="{{ tag_filter }}" placeholder="Tag filter" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+        <button type="submit" class="lg:col-span-5 px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Apply Filters</button>
+    </form>
+</section>
+
+<div class="flex justify-end mb-3 gap-2">
+    <button type="button" data-doc-view="grid" class="px-3 py-1.5 text-xs font-bold rounded border border-slate-200 dark:border-border-dark">Grid</button>
+    <button type="button" data-doc-view="list" class="px-3 py-1.5 text-xs font-bold rounded border border-slate-200 dark:border-border-dark">List</button>
+</div>
+
+<section id="document-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for document in documents %}
+        <article class="doc-item bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-3" data-href="{{ url_for('documents.detail', document_id=document.id) }}">
+            {{ document_card(document.original_name, 'Uploaded ' ~ document.created_at.strftime('%Y-%m-%d') ~ ' by ' ~ (document.uploader.username if document.uploader else 'Unknown'), document.file_type.value) }}
+            <div class="px-3 pb-2 flex items-center justify-between text-[10px] text-slate-500">
+                <span>v{{ document.version }}</span>
+                <span>{{ (document.tags or [])|join(', ') if document.tags else 'No tags' }}</span>
+            </div>
+        </article>
+    {% else %}
+        <div class="col-span-full bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-6 text-sm text-slate-500 dark:text-slate-400">No documents found.</div>
+    {% endfor %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('document-container');
+    const gridBtn = document.querySelector('[data-doc-view="grid"]');
+    const listBtn = document.querySelector('[data-doc-view="list"]');
+
+    const setGrid = () => {
+        container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4';
+    };
+
+    const setList = () => {
+        container.className = 'grid grid-cols-1 gap-3';
+    };
+
+    gridBtn?.addEventListener('click', setGrid);
+    listBtn?.addEventListener('click', setList);
+
+    document.querySelectorAll('.doc-item').forEach((card) => {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => {
+            const href = card.getAttribute('data-href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

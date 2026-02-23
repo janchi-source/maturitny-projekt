@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | ProMat</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#197fe6",
+                        "background-dark": "#111921",
+                        "surface-dark": "#1b252e",
+                        "border-dark": "#293038"
+                    },
+                    fontFamily: {
+                        display: ["Space Grotesk", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-display bg-background-dark text-slate-100 min-h-screen flex items-center justify-center p-4 sm:p-6">
+    <div class="w-full max-w-md bg-surface-dark rounded-xl border border-border-dark shadow-sm p-6 sm:p-8">
+        <div class="mb-6 text-center">
+            <h1 class="text-2xl font-bold tracking-tight">Welcome back</h1>
+            <p class="text-sm text-slate-400 mt-1">Sign in to continue to ProMat</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-4 space-y-2">
+                    {% for category, message in messages %}
+                        <div class="text-sm px-3 py-2 rounded border {% if category == 'success' %}text-emerald-300 bg-emerald-500/10 border-emerald-500/40{% elif category == 'error' %}text-red-300 bg-red-500/10 border-red-500/40{% else %}text-slate-300 bg-border-dark/40 border-border-dark{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="post" action="{{ url_for('auth.login') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div>
+                <label for="email" class="block text-sm font-semibold mb-1">Email</label>
+                <input id="email" name="email" type="email" required class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary" placeholder="you@example.com">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-semibold mb-1">Password</label>
+                <input id="password" name="password" type="password" required class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary" placeholder="••••••••">
+            </div>
+
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" name="remember_me" class="rounded border-border-dark bg-border-dark text-primary focus:ring-primary">
+                Remember me
+            </label>
+
+            <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">
+                Sign In
+            </button>
+        </form>
+
+        <p class="mt-5 text-sm text-slate-400 text-center">
+            Don’t have an account?
+            <a href="{{ url_for('auth.register') }}" class="text-primary font-semibold hover:underline">Create one</a>
+        </p>
+    </div>
+</body>
+</html>

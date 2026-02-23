@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProMat Enterprise Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#197fe6",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#111921",
+                        "surface-dark": "#1b252e",
+                        "border-dark": "#293038"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .sidebar-item-active { background-color: #293038; border-right: 3px solid #197fe6; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 bg-white dark:bg-surface-dark border-r border-slate-200 dark:border-border-dark flex flex-col justify-between py-6">
+<div class="flex flex-col gap-8">
+<!-- Logo -->
+<div class="px-6 flex items-center gap-3">
+<div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">rocket_launch</span>
+</div>
+<div>
+<h1 class="text-xl font-bold leading-none tracking-tight">ProMat</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Enterprise AI</p>
+</div>
+</div>
+<!-- Nav Items -->
+<nav class="flex flex-col gap-1 px-3">
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg sidebar-item-active text-primary">
+<span class="material-symbols-outlined">dashboard</span>
+<p class="text-sm font-semibold">Dashboard</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined">account_tree</span>
+<p class="text-sm font-medium">Projects</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined">check_circle</span>
+<p class="text-sm font-medium">Tasks</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined">description</span>
+<p class="text-sm font-medium">Documents</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined">smart_toy</span>
+<p class="text-sm font-medium">AI Chat</p>
+<span class="ml-auto bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">New</span>
+</div>
+<div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+<span class="material-symbols-outlined">group</span>
+<p class="text-sm font-medium">Team</p>
+</div>
+</nav>
+</div>
+<div class="px-3 flex flex-col gap-4">
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm">add</span>
+                    New Project
+                </button>
+<div class="flex flex-col gap-1 border-t border-slate-200 dark:border-border-dark pt-4">
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 cursor-pointer">
+<span class="material-symbols-outlined">settings</span>
+<p class="text-sm font-medium">Settings</p>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 cursor-pointer">
+<span class="material-symbols-outlined">help</span>
+<p class="text-sm font-medium">Support</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col overflow-y-auto">
+<!-- Top Header -->
+<header class="h-16 flex items-center justify-between px-8 bg-white dark:bg-surface-dark border-b border-slate-200 dark:border-border-dark sticky top-0 z-10">
+<div class="flex items-center gap-6 flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full bg-slate-100 dark:bg-border-dark border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary transition-all" placeholder="Search projects, AI insights, or docs..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-surface-dark"></span>
+</button>
+<div class="h-8 w-[1px] bg-slate-200 dark:border-border-dark mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<p class="text-sm font-bold leading-none">Alex Morgan</p>
+<p class="text-xs text-slate-500">Project Director</p>
+</div>
+<div class="size-9 rounded-full bg-cover bg-center border border-slate-200 dark:border-border-dark" data-alt="User profile portrait" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD9TUDlcTGkwr9LeZ4XQDnbHYLYdKeWfKjcefWCiowpLnd96dtlMZw0IaJO9K2c-Hjhhy9_E30nRuEp_Z61I7pFIAF6w6DyH1sy_BvBFRw7tHmxb3_lL3pHeOGZr34im1nOq1qMLkNjhW0535gm6HUBo-8hp07haxyaIrpgmALrOdvhBrIxVJi9QXb9fYbQ5kNwxaG2dGxyIYOjx9QftxkdU6lrD35iTwxWdWYLM6hannBnqVEWTYpKBh-6qq8zILpTTNW3baJGBDo')"></div>
+</div>
+</div>
+</header>
+<div class="p-8 max-w-7xl mx-auto w-full">
+<!-- Page Heading -->
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+<div class="flex flex-col gap-1">
+<h2 class="text-3xl font-black tracking-tight">Workspace Overview</h2>
+<p class="text-slate-500 dark:text-slate-400 font-medium">Real-time project status and AI-assisted insights</p>
+</div>
+<div class="flex gap-3">
+<button class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+                            Export Report
+                        </button>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-border-dark shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wider">Active Projects</p>
+<span class="material-symbols-outlined text-primary">folder_open</span>
+</div>
+<div class="flex items-end gap-3">
+<p class="text-4xl font-bold tracking-tight leading-none">24</p>
+<p class="text-emerald-500 text-sm font-bold flex items-center mb-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                +5%
+                            </p>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-border-dark shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wider">Upcoming Deadlines</p>
+<span class="material-symbols-outlined text-orange-500">event_upcoming</span>
+</div>
+<div class="flex items-end gap-3">
+<p class="text-4xl font-bold tracking-tight leading-none">12</p>
+<p class="text-orange-500 text-sm font-bold flex items-center mb-1">
+<span class="material-symbols-outlined text-sm">warning</span>
+                                -2%
+                            </p>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-border-dark shadow-sm">
+<div class="flex justify-between items-start mb-4">
+<p class="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-wider">AI Insights Shared</p>
+<span class="material-symbols-outlined text-indigo-500">auto_awesome</span>
+</div>
+<div class="flex items-end gap-3">
+<p class="text-4xl font-bold tracking-tight leading-none">88</p>
+<p class="text-emerald-500 text-sm font-bold flex items-center mb-1">
+<span class="material-symbols-outlined text-sm">trending_up</span>
+                                +12%
+                            </p>
+</div>
+</div>
+</div>
+<!-- Main Layout Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Left: Project Progress & Tasks -->
+<div class="lg:col-span-2 flex flex-col gap-8">
+<!-- Project Progress Cards -->
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+<div class="p-5 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
+<h3 class="text-lg font-bold">Priority Project Tracking</h3>
+<button class="text-primary text-xs font-bold uppercase tracking-widest hover:underline">View All</button>
+</div>
+<div class="p-6 flex flex-col gap-6">
+<!-- Project Row 1 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-sm font-bold">
+<div class="flex items-center gap-2">
+<span class="size-2 bg-emerald-500 rounded-full"></span>
+<span>Cloud Migration Phase 2</span>
+</div>
+<span>75%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-border-dark h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[75%] rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD1xDX40DVp02Q7PI6JP4KIEXeyu5RHgwaqDdEigf-0_1iP9x7JuOeWc7I7kHj6QL47724nu8TjlSTd_u9KGR__rSZrF_1rriXd44UEMjwtk1BQCRuCFUqSZm61OetUY-f0ZBI39HMSf8FaPIJW3SBFUv_-n4_qCjOpsD7eSe_FfYDinF8evYIa53yonf83MCpfJaA1djoSZz74M9FepldVcReKCEClEr3FkieXJ8XzCwfdzT2J6-8kkpBgl__nHQweRgL0ND0nzhY')"></div>
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBbRtSp3j2nuGYAv3n3WCsub71okVr5a1rPeu8fkWKGdggrzlAZsqL49ICO7RkIfe8nt-ZTWMo2KU8eQihFiuozc-40HIppsMws2FuEkUo3x9XgWP-DqCyUiECbj0WAdLmef56EfV_hCF2w8raW8UvK_0zPbjFdSdWyvjymVn5-Jph1sC0nPok3_wP4O7diwJjismYLh4FGYpLnNNqDRZiTZ_UUo347sMGCuCk6k_M7auGIq6XXxu3peC7REPNh4SqEk-CqnPv-50g')"></div>
+</div>
+<p class="text-[10px] text-slate-500 font-bold uppercase">Due in 4 days</p>
+</div>
+</div>
+<!-- Project Row 2 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-sm font-bold">
+<div class="flex items-center gap-2">
+<span class="size-2 bg-orange-500 rounded-full"></span>
+<span>Enterprise CRM Integration</span>
+</div>
+<span>32%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-border-dark h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[32%] rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDoVZdcqDVWBHWmQxl9rn82kW-l8frd7LD9_f6vywrR2IQHdoVVoD97CeMl1zzJAan-oUfuveJHSwwuq4O4OZ5l9jqIUwwOlSMWblsKh1Y9GvfVgRECMUcROmisJ1crQoE6S7c8aSrYA3XAG6U2V1IvdueeFKICORgrlOZOI5thANiGu9nOn3GDHjzy4QfpWYFITwFiKxIysdhrTiwtvG-yijUc0J-wcEwlfWYn3mYMjS15ot5FN2gEZSjBwXE2K-vhf2l7YQ3U2zg')"></div>
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCZsRtNEkgh3Ej-O_zil6OADvl8ctrIpIBc02jxrsa97KUJllFqIdA4PiFITnx4L2nul_SrJuRs52HeR1hMZpcpG8lledXt7vy0cB_Hcx7KchqodQI_fO4z7m88pa0d3dGmfIGjSJ-PpYE7EqESu08N3tSjmBF9TYmwpmhaDO_KcO9KXI-R004FXy_AjgLxRvlCdZvmdcuma8oA4YP-d4NMLUXiV7kSXCGC_KYO08MiDBAy3y7Uk5J9JGRjyCGbGuPedh6QO8dCNIg')"></div>
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBFBIDV_kCIuA4aXaUGmXxL3jIeNvPj4kDGkT-eERm7d7zrjhPhDNCpT2oesYd27vLW01fBSnGiGQ1lMcqbtfO_pOcVh9N-B_wbfONTrQLL_v6DV7ImeqrvWNGwnPu8J6dJyhHxH8j2Af3-7Mdl1qN9B0EEqWbHGVUC_nfoK7PAu43KLsV2GcphJsbvMpkiPVZlY64eoCBmKB8Y7QdHBULp7aON_4vmBI2IUSQZHnJowPqngBoOs8ydbJQMwKWqGZpbdH0AJpAD_RM')"></div>
+</div>
+<p class="text-[10px] text-slate-500 font-bold uppercase">Delayed</p>
+</div>
+</div>
+<!-- Project Row 3 -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-center text-sm font-bold">
+<div class="flex items-center gap-2">
+<span class="size-2 bg-primary rounded-full"></span>
+<span>AI Model Retraining Alpha</span>
+</div>
+<span>92%</span>
+</div>
+<div class="w-full bg-slate-100 dark:bg-border-dark h-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[92%] rounded-full"></div>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex -space-x-2">
+<div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 bg-cover" data-alt="team member" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDEFJFgCQiIHVCFoq2w_K9SlL5y_I4TA8QpGhwAuwxxA7NFLCKXUwRZ2LhsF3YI8Yr9Fhj008WsJ0PNbjP-53GYBgwHbM0B3Wguxc6Id5-0jh8KprPzMIn1JXFC_Epj1ey2m-arxaRrKOrmZgQF7-6eDzfAUDq1ZXOCqGjwNe1IX5Nb97rW4v3c6TdHClk61KVDCJf5kETjhGLCxOgyUwAuEBRe8nQJ29kWaLQtSRvAY7E8-8Bs65tMPyPOqsv8vUFw3FmbUKFGpTA')"></div>
+</div>
+<p class="text-[10px] text-slate-500 font-bold uppercase">Due Tomorrow</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Recent Task Progress Table -->
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+<div class="p-5 border-b border-slate-200 dark:border-border-dark">
+<h3 class="text-lg font-bold">Recent Task Activity</h3>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50 dark:bg-border-dark/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-border-dark">
+<th class="px-6 py-3">Task Name</th>
+<th class="px-6 py-3">Owner</th>
+<th class="px-6 py-3">Status</th>
+<th class="px-6 py-3 text-right">Progress</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-200 dark:divide-border-dark text-sm font-medium">
+<tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+<td class="px-6 py-4">Database Schema Review</td>
+<td class="px-6 py-4">Sarah Connor</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-blue-100 dark:bg-primary/20 text-primary text-[10px] font-black uppercase">In Review</span>
+</td>
+<td class="px-6 py-4 text-right font-bold text-slate-500">80%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+<td class="px-6 py-4">API Documentation Draft</td>
+<td class="px-6 py-4">John Doe</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase">Pending</span>
+</td>
+<td class="px-6 py-4 text-right font-bold text-slate-500">45%</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+<td class="px-6 py-4">Frontend Bug Fixing #241</td>
+<td class="px-6 py-4">Rick Grimes</td>
+<td class="px-6 py-4">
+<span class="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500 text-[10px] font-black uppercase">Complete</span>
+</td>
+<td class="px-6 py-4 text-right font-bold text-slate-500">100%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Right: AI-Assisted Document Insights -->
+<div class="flex flex-col gap-8">
+<section class="bg-gradient-to-br from-primary to-indigo-600 rounded-xl p-1 shadow-xl shadow-primary/20">
+<div class="bg-white dark:bg-surface-dark rounded-lg flex flex-col h-full overflow-hidden">
+<div class="p-5 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">auto_awesome</span>
+<h3 class="text-lg font-bold">AI Insights Feed</h3>
+</div>
+<span class="animate-pulse flex h-2 w-2 rounded-full bg-primary"></span>
+</div>
+<div class="flex flex-col divide-y divide-slate-100 dark:divide-border-dark">
+<!-- AI Insight 1 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors cursor-pointer group">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-black text-primary uppercase bg-primary/10 px-2 py-0.5 rounded">Risk Detection</span>
+<span class="text-[10px] text-slate-400">2m ago</span>
+</div>
+<p class="text-sm font-bold group-hover:text-primary transition-colors">Contract clause mismatch in Project Delta</p>
+<p class="text-xs text-slate-500 mt-1">AI detected a conflict between the vendor MSA and recent scope amendments.</p>
+<div class="mt-3 flex gap-2">
+<button class="text-[10px] font-bold text-primary border border-primary/30 px-2 py-1 rounded hover:bg-primary hover:text-white transition-all">Review Diff</button>
+</div>
+</div>
+<!-- AI Insight 2 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors cursor-pointer group">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-black text-indigo-500 uppercase bg-indigo-500/10 px-2 py-0.5 rounded">Summarization</span>
+<span class="text-[10px] text-slate-400">1h ago</span>
+</div>
+<p class="text-sm font-bold group-hover:text-primary transition-colors">Technical Spec V3 Summary</p>
+<p class="text-xs text-slate-500 mt-1">Key takeaway: Required latency reduced from 200ms to 50ms for AI processing nodes.</p>
+</div>
+<!-- AI Insight 3 -->
+<div class="p-5 hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors cursor-pointer group">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-black text-emerald-500 uppercase bg-emerald-500/10 px-2 py-0.5 rounded">Opportunity</span>
+<span class="text-[10px] text-slate-400">4h ago</span>
+</div>
+<p class="text-sm font-bold group-hover:text-primary transition-colors">Resource Optimization Identified</p>
+<p class="text-xs text-slate-500 mt-1">AI suggests reallocating 2 backend devs from project Beta to Alpha based on task velocity.</p>
+</div>
+</div>
+<div class="mt-auto p-4 bg-slate-50 dark:bg-border-dark/30">
+<button class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">chat</span>
+                                        Resume Chat with AI Assistant
+                                    </button>
+</div>
+</div>
+</section>
+<!-- Quick Documents Card -->
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+<div class="p-5 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
+<h3 class="text-lg font-bold">Recent Documents</h3>
+<span class="material-symbols-outlined text-slate-400">more_horiz</span>
+</div>
+<div class="p-2">
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark/50 cursor-pointer">
+<div class="size-10 bg-red-100 dark:bg-red-500/20 text-red-600 flex items-center justify-center rounded">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</div>
+<div>
+<p class="text-sm font-bold">Q3_Project_Brief.pdf</p>
+<p class="text-[10px] text-slate-500">Modified 3h ago by Alex</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark/50 cursor-pointer">
+<div class="size-10 bg-blue-100 dark:bg-blue-500/20 text-blue-600 flex items-center justify-center rounded">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<p class="text-sm font-bold">Compliance_Checklist_v1</p>
+<p class="text-[10px] text-slate-500">Modified 1d ago by AI-Agent</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark/50 cursor-pointer">
+<div class="size-10 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 flex items-center justify-center rounded">
+<span class="material-symbols-outlined">table_view</span>
+</div>
+<div>
+<p class="text-sm font-bold">Budget_Forecast_2024</p>
+<p class="text-[10px] text-slate-500">Modified 2d ago by Finance</p>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</div>
+<!-- Footer for additional metadata -->
+<footer class="mt-auto py-6 px-8 border-t border-slate-200 dark:border-border-dark flex justify-between items-center text-slate-500 text-xs">
+<p>© 2024 ProMat Enterprise Solutions. All rights reserved.</p>
+<div class="flex gap-6 font-bold uppercase tracking-widest">
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">Security</a>
+<a class="hover:text-primary transition-colors" href="#">System Status</a>
+</div>
+</footer>
+</main>
+</div>
+</body></html>

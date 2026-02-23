@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Integrations | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Integrations & API Tokens</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Webhook tokens for external systems and CSV import/export support</p>
+    </div>
+    <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Back to Tasks</a>
+</div>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 mb-6">
+    <h3 class="text-lg font-bold mb-4">Create API Token</h3>
+    <form method="post" class="flex flex-col sm:flex-row gap-3">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="create_token">
+        <input name="name" required placeholder="Token name" class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+        <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Generate Token</button>
+    </form>
+
+    {% if new_token_value %}
+        <div class="mt-4 border border-emerald-300 dark:border-emerald-500/40 rounded-lg p-3 bg-emerald-50/50 dark:bg-emerald-500/10">
+            <p class="text-xs font-bold uppercase text-emerald-700 dark:text-emerald-400">Copy now (shown once)</p>
+            <p class="mt-1 font-mono text-sm break-all">{{ new_token_value }}</p>
+        </div>
+    {% endif %}
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+    <h3 class="text-lg font-bold mb-4">Active Tokens</h3>
+    <div class="space-y-3">
+        {% for token in tokens %}
+            <article class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="font-bold text-sm">{{ token.name }}</p>
+                        <p class="text-[10px] text-slate-500 mt-1">{{ token.created_at.strftime('%Y-%m-%d %H:%M') }} • {% if token.is_active %}Active{% else %}Revoked{% endif %}</p>
+                    </div>
+                    {% if token.is_active %}
+                        <form method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="revoke_token">
+                            <input type="hidden" name="token_id" value="{{ token.id }}">
+                            <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded text-xs font-bold">Revoke</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </article>
+        {% else %}
+            <p class="text-sm text-slate-500">No tokens generated yet.</p>
+        {% endfor %}
+    </div>
+
+    <div class="mt-5 border-t border-slate-200 dark:border-border-dark pt-4">
+        <p class="text-xs text-slate-500">Webhook endpoint: <span class="font-mono">POST /tasks/webhooks/events</span></p>
+        <p class="text-xs text-slate-500 mt-1">Auth header: <span class="font-mono">X-Api-Token: &lt;token&gt;</span> or <span class="font-mono">Authorization: Bearer &lt;token&gt;</span></p>
+        <p class="text-xs text-slate-500 mt-1">Supported events: <span class="font-mono">task.create</span>, <span class="font-mono">task.update_status</span></p>
+    </div>
+</section>
+{% endblock %}

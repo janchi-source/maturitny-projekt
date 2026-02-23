@@ -1,0 +1,36 @@
+{% macro task_row(name, owner, status, progress, link_url=None, labels=[]) %}
+{% set status_l = status|lower %}
+{% if status_l == 'in review' or status_l == 'in_review' %}
+    {% set badge = 'bg-blue-100 dark:bg-primary/20 text-primary' %}
+{% elif status_l == 'pending' %}
+    {% set badge = 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500' %}
+{% elif status_l == 'complete' or status_l == 'done' %}
+    {% set badge = 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500' %}
+{% elif status_l == 'critical' %}
+    {% set badge = 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-500' %}
+{% else %}
+    {% set badge = 'bg-slate-100 dark:bg-border-dark text-slate-600 dark:text-slate-300' %}
+{% endif %}
+
+<tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+    <td class="px-6 py-4">
+        {% if link_url %}
+            <a href="{{ link_url }}" class="font-semibold hover:text-primary">{{ name }}</a>
+        {% else %}
+            {{ name }}
+        {% endif %}
+        {% if labels %}
+            <div class="mt-2 flex flex-wrap gap-1">
+                {% for label in labels %}
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-border-dark text-[10px] font-semibold text-slate-500 dark:text-slate-300">{{ label.name }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </td>
+    <td class="px-6 py-4">{{ owner }}</td>
+    <td class="px-6 py-4">
+        <span class="px-2 py-1 rounded {{ badge }} text-[10px] font-black uppercase">{{ status }}</span>
+    </td>
+    <td class="px-6 py-4 text-right font-bold text-slate-500">{{ progress }}%</td>
+</tr>
+{% endmacro %}

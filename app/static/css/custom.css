@@ -1,0 +1,41 @@
+body {
+    font-family: "Space Grotesk", sans-serif;
+}
+
+.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.sidebar-item-active {
+    background-color: #293038;
+    border-right: 3px solid #197fe6;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #293038 #111921;
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: #111921;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: #293038;
+    border-radius: 9999px;
+    border: 2px solid #111921;
+}
+
+.fade-enter {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.fade-enter-active {
+    opacity: 1;
+}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% from 'components/stats_card.html' import stats_card %}
+{% from 'components/project_row.html' import project_row %}
+{% from 'components/task_row.html' import task_row %}
+{% from 'components/document_card.html' import document_card %}
+{% from 'components/ai_insight.html' import ai_insight %}
+
+{% block title %}Dashboard | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div class="flex flex-col gap-1">
+        <h2 class="text-3xl font-black tracking-tight">Workspace Overview</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Real-time project status and AI-assisted insights</p>
+    </div>
+    <div class="flex gap-3">
+        <button type="button" class="flex items-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+            <span class="material-symbols-outlined text-sm">download</span>
+            Export Report
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    {{ stats_card('Active Projects', active_project_count, 'folder_open', '+0%', 'trending_up', 'text-primary', 'text-emerald-500') }}
+    {{ stats_card('Upcoming Deadlines', upcoming_deadline_count, 'event_upcoming', '+0%', 'warning', 'text-orange-500', 'text-orange-500') }}
+    {{ stats_card('AI Insights Shared', ai_insight_count, 'auto_awesome', '+0%', 'trending_up', 'text-indigo-500', 'text-emerald-500') }}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 flex flex-col gap-8">
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
+                <h3 class="text-lg font-bold">Priority Project Tracking</h3>
+                <button type="button" class="text-primary text-xs font-bold uppercase tracking-widest hover:underline">View All</button>
+            </div>
+            <div class="p-6 flex flex-col gap-6">
+                {% if top_projects %}
+                    {% for project in top_projects %}
+                        {{ project_row(project.name, project.progress, project.due_label, project.dot_color, project.team) }}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-sm text-slate-500 dark:text-slate-400">No active projects found.</p>
+                {% endif %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-200 dark:border-border-dark">
+                <h3 class="text-lg font-bold">Recent Task Activity</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                    <tr class="bg-slate-50 dark:bg-border-dark/30 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200 dark:border-border-dark">
+                        <th class="px-6 py-3">Task Name</th>
+                        <th class="px-6 py-3">Owner</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3 text-right">Progress</th>
+                    </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200 dark:divide-border-dark text-sm font-medium">
+                    {% if recent_tasks %}
+                        {% for task in recent_tasks %}
+                            {% if task.status == TaskStatus.DONE %}
+                                {% set status_label = 'Complete' %}
+                            {% elif task.status == TaskStatus.IN_REVIEW %}
+                                {% set status_label = 'In Review' %}
+                            {% elif task.priority == TaskPriority.CRITICAL %}
+                                {% set status_label = 'Critical' %}
+                            {% else %}
+                                {% set status_label = 'Pending' %}
+                            {% endif %}
+                            {{ task_row(task.title, task.assignee.username if task.assignee else 'Unassigned', status_label, task.progress) }}
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td class="px-6 py-6 text-slate-500" colspan="4">No recent tasks found.</td>
+                        </tr>
+                    {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="flex flex-col gap-8">
+        <section class="bg-gradient-to-br from-primary to-indigo-600 rounded-xl p-1 shadow-xl shadow-primary/20">
+            <div class="bg-white dark:bg-surface-dark rounded-lg flex flex-col h-full overflow-hidden">
+                <div class="p-5 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">auto_awesome</span>
+                        <h3 class="text-lg font-bold">AI Insights Feed</h3>
+                    </div>
+                    <span class="animate-pulse flex h-2 w-2 rounded-full bg-primary"></span>
+                </div>
+                <div class="flex flex-col divide-y divide-slate-100 dark:divide-border-dark">
+                    {% for insight in ai_insights %}
+                        {{ ai_insight(insight.type_label, insight.title, insight.description, insight.timestamp, insight.action_label, insight.tone) }}
+                    {% endfor %}
+                </div>
+                <div class="mt-auto p-4 bg-slate-50 dark:bg-border-dark/30">
+                    <button type="button" class="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-sm">chat</span>
+                        Resume Chat with AI Assistant
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="p-5 border-b border-slate-200 dark:border-border-dark flex justify-between items-center">
+                <h3 class="text-lg font-bold">Recent Documents</h3>
+                <span class="material-symbols-outlined text-slate-400">more_horiz</span>
+            </div>
+            <div class="p-2">
+                {% if recent_documents %}
+                    {% for document in recent_documents %}
+                        {{ document_card(document.original_name, 'Modified ' ~ document.created_at.strftime('%Y-%m-%d') ~ ' by ' ~ (document.uploader.username if document.uploader else 'Unknown'), document.file_type.value) }}
+                    {% endfor %}
+                {% else %}
+                    <p class="p-3 text-sm text-slate-500 dark:text-slate-400">No documents uploaded yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

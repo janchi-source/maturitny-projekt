@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+
+{% block title %}Task Detail | ProMat{% endblock %}
+
+{% macro status_badge(value) %}
+    {% if value == 'done' %}
+        <span class="px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500 text-[10px] font-black uppercase">Done</span>
+    {% elif value == 'in_review' %}
+        <span class="px-2 py-1 rounded bg-blue-100 dark:bg-primary/20 text-primary text-[10px] font-black uppercase">In Review</span>
+    {% elif value == 'in_progress' %}
+        <span class="px-2 py-1 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 text-[10px] font-black uppercase">In Progress</span>
+    {% else %}
+        <span class="px-2 py-1 rounded bg-slate-100 dark:bg-border-dark text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase">To Do</span>
+    {% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">{{ task.title }}</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Task details, editing, checklist, dependencies and timeline</p>
+    </div>
+    <div class="flex gap-2">
+        <form method="post" action="{{ url_for('tasks.toggle_watch', task_id=task.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">{% if is_watching %}Unwatch{% else %}Watch{% endif %}</button>
+        </form>
+        <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Back to Tasks</a>
+        <a href="{{ url_for('tasks.kanban') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Kanban</a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 space-y-6">
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Task Details</h3>
+                {{ status_badge(task.status.value) }}
+            </div>
+
+            <form method="post" action="{{ url_for('tasks.quick_update', task_id=task.id) }}" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div>
+                    <label for="title" class="block text-sm font-semibold mb-1">Title</label>
+                    <input id="title" name="title" type="text" required value="{{ task.title }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                </div>
+
+                <div>
+                    <label for="description" class="block text-sm font-semibold mb-1">Description</label>
+                    <textarea id="description" name="description" rows="4" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">{{ task.description or '' }}</textarea>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="project_id" class="block text-sm font-semibold mb-1">Project</label>
+                        <select id="project_id" name="project_id" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                            {% for project in projects %}
+                                <option value="{{ project.id }}" {% if task.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="assignee_id" class="block text-sm font-semibold mb-1">Assignee</label>
+                        <select id="assignee_id" name="assignee_id" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                            <option value="">Unassigned</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}" {% if task.assignee_id == user.id %}selected{% endif %}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="priority" class="block text-sm font-semibold mb-1">Priority</label>
+                        <select id="priority" name="priority" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                            {% for value in priority_values %}
+                                <option value="{{ value }}" {% if task.priority.value == value %}selected{% endif %}>{{ value|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="status" class="block text-sm font-semibold mb-1">Status</label>
+                        <select id="status" name="status" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                            {% for value in status_values %}
+                                <option value="{{ value }}" {% if task.status.value == value %}selected{% endif %}>{{ value|replace('_', ' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="progress" class="block text-sm font-semibold mb-1">Progress (%)</label>
+                        <input id="progress" name="progress" type="number" min="0" max="100" value="{{ task.progress }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="due_date" class="block text-sm font-semibold mb-1">Due Date</label>
+                        <input id="due_date" name="due_date" type="datetime-local" value="{{ task.due_date.strftime('%Y-%m-%dT%H:%M') if task.due_date else '' }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label for="labels" class="block text-sm font-semibold mb-1">Labels (comma-separated)</label>
+                        <input id="labels" name="labels" type="text" value="{{ task.labels|map(attribute='name')|join(', ') }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" placeholder="backend, urgent, legal-review">
+                    </div>
+                </div>
+
+                <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Save Task Details</button>
+            </form>
+
+            {% if task.labels %}
+                <div class="mt-4 flex flex-wrap gap-2">
+                    {% for label in task.labels %}
+                        <span class="px-2 py-1 rounded bg-slate-100 dark:bg-border-dark text-xs font-semibold">{{ label.name }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('tasks.assign_sprint', task_id=task.id) }}" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-semibold mb-1">Sprint</label>
+                    <select name="sprint_id" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+                        <option value="">Backlog (no sprint)</option>
+                        {% for sprint in sprints %}
+                            <option value="{{ sprint.id }}" {% if task.sprint_id == sprint.id %}selected{% endif %}>{{ sprint.name }} ({{ sprint.status.value|title }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="px-4 py-2.5 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-sm font-bold">Update Sprint</button>
+            </form>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Checklist</h3>
+                <p class="text-sm text-slate-500">{{ checklist_done }}/{{ checklist_total }} complete</p>
+            </div>
+
+            <form method="post" action="{{ url_for('tasks.add_checklist_item', task_id=task.id) }}" class="flex flex-col sm:flex-row gap-3 mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="title" required class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm" placeholder="Add checklist item">
+                <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Add</button>
+            </form>
+
+            <div class="space-y-2">
+                {% for item in task.checklist_items %}
+                    <div class="flex items-center justify-between gap-3 border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5">
+                        <form method="post" action="{{ url_for('tasks.toggle_checklist_item', task_id=task.id, item_id=item.id) }}" class="flex items-center gap-2 flex-1">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="h-5 w-5 rounded border border-slate-300 dark:border-border-dark {% if item.is_done %}bg-emerald-500 border-emerald-500{% endif %}"></button>
+                            <span class="text-sm {% if item.is_done %}line-through text-slate-500{% endif %}">{{ item.title }}</span>
+                        </form>
+                        <form method="post" action="{{ url_for('tasks.delete_checklist_item', task_id=task.id, item_id=item.id) }}" onsubmit="return confirm('Delete checklist item?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="text-xs text-red-500 font-semibold">Delete</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No checklist items yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+            <h3 class="text-lg font-bold mb-4">Comments</h3>
+
+            <form method="post" action="{{ url_for('tasks.add_comment', task_id=task.id) }}" class="space-y-3 mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <textarea name="content" rows="3" required class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm" placeholder="Add a comment. Mention teammates with @username"></textarea>
+                <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Post Comment</button>
+            </form>
+
+            <div class="space-y-3">
+                {% for comment in task.comments|sort(attribute='created_at', reverse=True) %}
+                    <article class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                        <p class="text-sm leading-relaxed">{{ comment.content | mentionize | safe }}</p>
+                        <p class="text-[10px] text-slate-500 mt-2">{{ comment.author.username if comment.author else 'Unknown' }} • {{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+
+                        {% if current_user.id == comment.author_id or current_user.role.value in ['admin', 'owner'] %}
+                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <form method="post" action="{{ url_for('tasks.edit_comment', task_id=task.id, comment_id=comment.id) }}" class="space-y-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <textarea name="content" rows="2" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-xs">{{ comment.content }}</textarea>
+                                    <button type="submit" class="text-xs px-3 py-1.5 rounded bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-semibold">Update</button>
+                                </form>
+                                <form method="post" action="{{ url_for('tasks.delete_comment', task_id=task.id, comment_id=comment.id) }}" onsubmit="return confirm('Delete this comment?');" class="self-end">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="text-xs px-3 py-1.5 rounded bg-red-600 text-white font-semibold">Delete</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% else %}
+                    <p class="text-sm text-slate-500">No comments yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div class="space-y-6">
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+            <h3 class="text-lg font-bold mb-4">Dependencies</h3>
+
+            <form method="post" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}" class="space-y-3 mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <select name="blocker_id" required class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+                    <option value="">Blocked by task...</option>
+                    {% for option_task in available_dependencies %}
+                        <option value="{{ option_task.id }}">#{{ option_task.id }} {{ option_task.title }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="w-full px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Add Dependency</button>
+            </form>
+
+            <div class="space-y-2">
+                <p class="text-xs uppercase tracking-wider text-slate-500 font-bold">This task is blocked by</p>
+                {% for blocker in task.blocking_tasks %}
+                    <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                        <a href="{{ url_for('tasks.detail', task_id=blocker.id) }}" class="text-sm font-semibold hover:text-primary">#{{ blocker.id }} {{ blocker.title }}</a>
+                        <div class="mt-2 flex items-center justify-between">
+                            {{ status_badge(blocker.status.value) }}
+                            <form method="post" action="{{ url_for('tasks.remove_dependency', task_id=task.id, blocker_id=blocker.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="text-xs text-red-500 font-semibold">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No blockers set.</p>
+                {% endfor %}
+            </div>
+
+            <div class="space-y-2 mt-4">
+                <p class="text-xs uppercase tracking-wider text-slate-500 font-bold">This task blocks</p>
+                {% for blocked in task.blocked_tasks %}
+                    <a href="{{ url_for('tasks.detail', task_id=blocked.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 text-sm font-semibold hover:text-primary">#{{ blocked.id }} {{ blocked.title }}</a>
+                {% else %}
+                    <p class="text-sm text-slate-500">Not blocking other tasks.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+            <h3 class="text-lg font-bold mb-3">Watchers</h3>
+            <div class="flex flex-wrap gap-2">
+                {% for watcher in task.watchers %}
+                    <span class="px-2 py-1 rounded bg-slate-100 dark:bg-border-dark text-xs font-semibold">{{ watcher.user.username if watcher.user else 'Unknown' }}</span>
+                {% else %}
+                    <p class="text-sm text-slate-500">No watchers yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+            <h3 class="text-lg font-bold mb-4">Attachments</h3>
+
+            <form method="post" action="{{ url_for('tasks.upload_attachment', task_id=task.id) }}" enctype="multipart/form-data" class="space-y-3 mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="file" name="file" required class="w-full text-sm file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-slate-100 dark:file:bg-border-dark file:text-sm file:font-semibold">
+                <textarea name="version_note" rows="2" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm" placeholder="Version note (optional)"></textarea>
+                <button type="submit" class="w-full px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Upload Attachment</button>
+            </form>
+
+            <div class="space-y-3">
+                {% for attachment in task.attachments %}
+                    <article class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                        <p class="text-sm font-semibold">{{ attachment.original_name }} <span class="text-xs text-slate-500">v{{ attachment.version }}</span></p>
+                        <p class="text-[10px] text-slate-500 mt-1">{{ attachment.uploader.username if attachment.uploader else 'Unknown' }} • {{ attachment.created_at.strftime('%Y-%m-%d %H:%M') }} • {{ (attachment.file_size / 1024)|round(1) }} KB</p>
+                        {% if attachment.version_note %}
+                            <p class="text-xs text-slate-500 mt-2">{{ attachment.version_note }}</p>
+                        {% endif %}
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <a href="{{ url_for('tasks.preview_attachment', task_id=task.id, attachment_id=attachment.id) }}" target="_blank" class="px-3 py-1.5 rounded border border-slate-200 dark:border-border-dark text-xs font-semibold hover:bg-slate-50 dark:hover:bg-border-dark/50">Preview</a>
+                            <a href="{{ url_for('tasks.download_attachment', task_id=task.id, attachment_id=attachment.id) }}" class="px-3 py-1.5 rounded border border-slate-200 dark:border-border-dark text-xs font-semibold hover:bg-slate-50 dark:hover:bg-border-dark/50">Download</a>
+                            <form method="post" action="{{ url_for('tasks.delete_attachment', task_id=task.id, attachment_id=attachment.id) }}" onsubmit="return confirm('Delete attachment?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="px-3 py-1.5 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-500">Delete</button>
+                            </form>
+                        </div>
+                    </article>
+                {% else %}
+                    <p class="text-sm text-slate-500">No attachments yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+            <h3 class="text-lg font-bold mb-4">Activity Timeline</h3>
+            <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                {% for activity in task.activities %}
+                    <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                        <p class="text-sm font-semibold">{{ activity.action|replace('_', ' ')|title }}</p>
+                        {% if activity.details %}
+                            <p class="text-xs text-slate-500 mt-1">{{ activity.details }}</p>
+                        {% endif %}
+                        <p class="text-[10px] text-slate-500 mt-2">{{ activity.actor.username if activity.actor else 'System' }} • {{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    </div>
+                {% else %}
+                    <p class="text-sm text-slate-500">No activity recorded yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+            <h3 class="text-lg font-bold mb-3">Danger Zone</h3>
+            <form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}" onsubmit="return confirm('Delete this task?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500">Delete Task</button>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}

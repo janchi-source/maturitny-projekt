@@ -1,0 +1,39 @@
+<header class="h-16 flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 bg-white dark:bg-surface-dark border-b border-slate-200 dark:border-border-dark sticky top-0 z-30">
+    <div class="flex items-center gap-3 flex-1 max-w-xl">
+        <button type="button" class="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark" data-sidebar-open>
+            <span class="material-symbols-outlined">menu</span>
+        </button>
+        <div class="relative w-full">
+            <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+            <input class="w-full bg-slate-100 dark:bg-border-dark border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary transition-all" placeholder="Search projects, AI insights, or docs..." type="text">
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3 sm:gap-4">
+        <div class="relative">
+            <button type="button" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors" data-notification-toggle>
+                <span class="material-symbols-outlined">notifications</span>
+                <span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-surface-dark"></span>
+            </button>
+            <div class="hidden absolute right-0 mt-2 w-64 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg shadow-lg" data-notification-menu>
+                <div class="p-3 border-b border-slate-200 dark:border-border-dark text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</div>
+                <div class="p-3 text-sm text-slate-600 dark:text-slate-300">No new notifications</div>
+            </div>
+        </div>
+        <div class="h-8 w-[1px] bg-slate-200 dark:bg-border-dark hidden sm:block"></div>
+        <div class="flex items-center gap-3">
+            <div class="text-right hidden sm:block">
+                {% if current_user.is_authenticated %}
+                    <p class="text-sm font-bold leading-none">{{ current_user.username }}</p>
+                    <p class="text-xs text-slate-500">{{ current_user.role.value|title if current_user.role else 'Member' }}</p>
+                {% else %}
+                    <p class="text-sm font-bold leading-none">Guest</p>
+                    <p class="text-xs text-slate-500">Visitor</p>
+                {% endif %}
+            </div>
+            <div class="size-9 rounded-full bg-slate-300 dark:bg-border-dark border border-slate-200 dark:border-border-dark flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-600 dark:text-slate-300 text-base">person</span>
+            </div>
+        </div>
+    </div>
+</header>

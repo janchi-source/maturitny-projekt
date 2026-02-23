@@ -1,0 +1,26 @@
+{% macro project_row(name, progress, due_label='Due soon', dot_color='bg-primary', team=[]) %}
+<div class="flex flex-col gap-2">
+    <div class="flex justify-between items-center text-sm font-bold">
+        <div class="flex items-center gap-2">
+            <span class="size-2 {{ dot_color }} rounded-full"></span>
+            <span>{{ name }}</span>
+        </div>
+        <span>{{ progress }}%</span>
+    </div>
+    <div class="w-full bg-slate-100 dark:bg-border-dark h-2 rounded-full overflow-hidden">
+        <div class="bg-primary h-full rounded-full" style="width: {{ progress }}%"></div>
+    </div>
+    <div class="flex justify-between items-center mt-1">
+        <div class="flex -space-x-2">
+            {% if team %}
+                {% for member in team %}
+                    <div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 dark:bg-border-dark flex items-center justify-center text-[10px] font-bold uppercase">{{ member[:1] }}</div>
+                {% endfor %}
+            {% else %}
+                <div class="size-6 rounded-full border-2 border-white dark:border-surface-dark bg-slate-300 dark:bg-border-dark flex items-center justify-center text-[10px] font-bold uppercase">A</div>
+            {% endif %}
+        </div>
+        <p class="text-[10px] text-slate-500 font-bold uppercase">{{ due_label }}</p>
+    </div>
+</div>
+{% endmacro %}

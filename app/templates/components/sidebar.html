@@ -1,0 +1,61 @@
+{% set endpoint = request.endpoint or '' %}
+
+<div id="mobile-sidebar-overlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" data-sidebar-overlay></div>
+
+<aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-full md:w-64 max-w-xs md:max-w-none flex-shrink-0 bg-white dark:bg-surface-dark border-r border-slate-200 dark:border-border-dark flex flex-col justify-between py-6 transform -translate-x-full md:translate-x-0 transition-transform duration-200 ease-out">
+    <div class="flex flex-col gap-8 overflow-y-auto">
+        <div class="px-6 flex items-center justify-between md:justify-start gap-3">
+            <div class="flex items-center gap-3">
+                <div class="bg-primary size-10 rounded-lg flex items-center justify-center text-white">
+                    <span class="material-symbols-outlined">rocket_launch</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-none tracking-tight">ProMat</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Enterprise AI</p>
+                </div>
+            </div>
+            <button type="button" class="md:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark" data-sidebar-close>
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <nav class="flex flex-col gap-1 px-3">
+            <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint == 'dashboard.index' %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">dashboard</span>
+                <p class="text-sm font-semibold">Dashboard</p>
+            </a>
+            <a href="/projects/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('projects.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">account_tree</span>
+                <p class="text-sm font-medium">Projects</p>
+            </a>
+            <a href="/tasks/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('tasks.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">check_circle</span>
+                <p class="text-sm font-medium">Tasks</p>
+            </a>
+            <a href="/documents/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('documents.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">description</span>
+                <p class="text-sm font-medium">Documents</p>
+            </a>
+            <a href="/ai-chat/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('ai_chat.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">smart_toy</span>
+                <p class="text-sm font-medium">AI Chat</p>
+                <span class="ml-auto bg-primary/20 text-primary text-[10px] px-1.5 py-0.5 rounded uppercase font-bold">New</span>
+            </a>
+            <a href="/team/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('team.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+                <span class="material-symbols-outlined">group</span>
+                <p class="text-sm font-medium">Team</p>
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <span class="material-symbols-outlined">settings</span>
+                <p class="text-sm font-medium">Settings</p>
+            </a>
+        </nav>
+    </div>
+
+    <div class="px-3 flex flex-col gap-4">
+        <a href="/projects/new" class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20">
+            <span class="material-symbols-outlined text-sm">add</span>
+            New Project
+        </a>
+    </div>
+</aside>

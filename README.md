@@ -254,11 +254,11 @@ ProMAT/
 
 | # | Stream Milestone | Priority | Complexity | Dependencies | Status | Agent | Notes |
 |---|------------------|----------|------------|--------------|--------|-------|-------|
-| 12.1 | **Task Core**: Deliver task detail, in-place editing, subtasks/checklists, labels | High | L | 11.1–11.4 | ⬜ TODO | | Build vertical slice end-to-end first |
-| 12.2 | **Collaboration**: Deliver mentions, attachments, activity timeline, notifications, watchers | High | L | 11.6–11.8, 11.13–11.14 | ⬜ TODO | | Ensure permission checks in all write actions |
-| 12.3 | **Planning**: Deliver dependency graph, backlog/sprint planning, advanced board controls | Medium | XL | 11.5, 11.9, 11.10 | ⬜ TODO | | Keep board UX simple and responsive |
-| 12.4 | **Governance**: Deliver granular permissions matrix and admin tooling | High | L | 11.17 | ⬜ TODO | | Required before broader team rollout |
-| 12.5 | **Scale & Insights**: Deliver saved filters, bulk actions, reporting, import/export, automation | Medium | XL | 11.11, 11.12, 11.15, 11.16, 11.18 | ⬜ TODO | | Sequence by operational impact |
+| 12.1 | **Task Core**: Deliver task detail, in-place editing, subtasks/checklists, labels | High | L | 11.1–11.4 | ✅ DONE | GitHub Copilot | Completed task core vertical slice: parent-child subtasks, checklist create/edit/toggle/delete, inline task detail autosave, chip-based label editing with suggestions/autocomplete, hierarchy filtering, bulk/webhook subtask constraints, parent progress rollup with auto-close/auto-reopen, live rollup/status refresh in kanban, and linking/unlinking project documents directly on tasks |
+| 12.2 | **Collaboration**: Deliver mentions, attachments, activity timeline, notifications, watchers | High | L | 11.6–11.8, 11.13–11.14 | ✅ DONE | GitHub Copilot | Completed collaboration hardening by enforcing project-membership authorization on documents/projects visibility + watcher operations and preserving existing mentions/attachments/timeline/notifications feature set |
+| 12.3 | **Planning**: Deliver dependency graph, backlog/sprint planning, advanced board controls | Medium | XL | 11.5, 11.9, 11.10 | ✅ DONE | GitHub Copilot | Completed planning stream with dependency graph visualization on task detail, story-points planning model, and sprint velocity/burndown point metrics in reports while retaining backlog/sprint and advanced board controls |
+| 12.4 | **Governance**: Deliver granular permissions matrix and admin tooling | High | L | 11.17 | ✅ DONE | GitHub Copilot | Completed governance stream with admin module (dashboard + audit log + permission CSV export), audit log model/service, role-gated admin navigation, and audit instrumentation for user/project/document governance actions |
+| 12.5 | **Scale & Insights**: Deliver saved filters, bulk actions, reporting, import/export, automation | Medium | XL | 11.11, 11.12, 11.15, 11.16, 11.18 | ✅ DONE | GitHub Copilot | Completed stream with saved filters (including hierarchy mode), atomic bulk actions with rollback and subtask guards, expanded reporting (velocity + story points + burndown points), CSV import/export + webhook/API token integrations, and active automation rules wired into task updates |
 
 ### Roadmap Conventions
 

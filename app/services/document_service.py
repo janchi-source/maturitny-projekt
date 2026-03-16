@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 from uuid import uuid4
 
 from docx import Document as DocxDocument
@@ -6,7 +7,7 @@ from PyPDF2 import PdfReader
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
-from ..models.document import Document, DocumentType
+from ..models.document import Document, DocumentRevision, DocumentType
 
 
 def extract_text_from_pdf(filepath):
@@ -50,6 +51,7 @@ def process_upload(file, project_id, user_id, tags=None, upload_root="uploads"):
     version = (
         Document.query.filter_by(project_id=project_id, original_name=original_name).count() + 1
     )
+    file_hash = _sha256_for_file(file_path)
 
     document = Document(
         filename=stored_name,
@@ -60,8 +62,32 @@ def process_upload(file, project_id, user_id, tags=None, upload_root="uploads"):
         tags=normalized_tags,
         project_id=project_id,
         uploaded_by=user_id,
+        updated_by=user_id,
         version=version,
     )
     db.session.add(document)
+    db.session.flush()
+
+    revision = DocumentRevision(
+        document_id=document.id,
+        version=version,
+        filename=stored_name,
+        file_size=document.file_size,
+        file_hash=file_hash,
+        created_by=user_id,
+        change_note="Initial upload" if version == 1 else "New upload revision",
+    )
+    db.session.add(revision)
     db.session.commit()
     return document
+
+
+def _sha256_for_file(file_path):
+    hasher = hashlib.sha256()
+    with file_path.open("rb") as file_handle:
+        while True:
+            chunk = file_handle.read(8192)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    return hasher.hexdigest()

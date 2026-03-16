@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from ..blueprints import role_required
 from ..extensions import db
 from ..models.user import User, UserRole
+from ..services.audit_service import log_audit
 
 
 team_bp = Blueprint("team", __name__)
@@ -34,6 +35,7 @@ def index():
 @role_required(UserRole.ADMIN)
 def edit(user_id):
     user = User.query.get_or_404(user_id)
+    previous_role = user.role.value
 
     if request.method == "POST":
         role_value = request.form.get("role", "").strip().lower()
@@ -47,6 +49,13 @@ def edit(user_id):
                 role_values=[role.value for role in UserRole],
             )
 
+        db.session.commit()
+        log_audit(
+            action="team.role_updated",
+            resource_type="user",
+            resource_id=user.id,
+            details=f"Role changed from {previous_role} to {user.role.value}",
+        )
         db.session.commit()
         flash("User role updated.", "success")
         return redirect(url_for("team.index"))
@@ -66,6 +75,12 @@ def delete(user_id):
         flash("You cannot remove your own account.", "error")
         return redirect(url_for("team.index"))
 
+    log_audit(
+        action="team.user_deleted",
+        resource_type="user",
+        resource_id=user.id,
+        details=f"Deleted user {user.username}",
+    )
     db.session.delete(user)
     db.session.commit()
     flash("User removed.", "info")

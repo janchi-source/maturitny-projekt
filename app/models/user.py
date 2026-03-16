@@ -61,3 +61,4 @@ class User(UserMixin, db.Model):
     project_memberships = db.relationship("ProjectMembership", back_populates="user", cascade="all, delete-orphan")
     task_watchers = db.relationship("TaskWatcher", back_populates="user", cascade="all, delete-orphan")
     project_watchers = db.relationship("ProjectWatcher", back_populates="user", cascade="all, delete-orphan")
+    audit_logs = db.relationship("AuditLog", back_populates="actor")

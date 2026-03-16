@@ -70,6 +70,7 @@ class TaskSavedFilter(db.Model):
     status = db.Column(db.String(30), nullable=True)
     assignee_id = db.Column(db.Integer, nullable=True)
     label = db.Column(db.String(80), nullable=True)
+    hierarchy = db.Column(db.String(30), nullable=False, default="all")
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     user = db.relationship("User", back_populates="saved_task_filters")

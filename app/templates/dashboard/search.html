@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Search | ProMat{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-6">
+        <h2 class="text-3xl font-black tracking-tight">Search Results</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Query: {{ query if query else 'Type a search in the header' }}</p>
+    </div>
+
+    {% if query %}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+                <div class="p-4 border-b border-slate-200 dark:border-border-dark">
+                    <h3 class="text-lg font-bold">Projects ({{ projects|length }})</h3>
+                </div>
+                <div class="p-4 space-y-3">
+                    {% for project in projects %}
+                        <a href="{{ url_for('projects.detail', project_id=project.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 hover:text-primary">
+                            <p class="text-sm font-semibold">{{ project.name }}</p>
+                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ project.description or 'No description' }}</p>
+                        </a>
+                    {% else %}
+                        <p class="text-sm text-slate-500">No matching projects.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+                <div class="p-4 border-b border-slate-200 dark:border-border-dark">
+                    <h3 class="text-lg font-bold">Tasks ({{ tasks|length }})</h3>
+                </div>
+                <div class="p-4 space-y-3">
+                    {% for task in tasks %}
+                        <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 hover:text-primary">
+                            <p class="text-sm font-semibold">{{ task.title }}</p>
+                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ task.description or 'No description' }}</p>
+                        </a>
+                    {% else %}
+                        <p class="text-sm text-slate-500">No matching tasks.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+                <div class="p-4 border-b border-slate-200 dark:border-border-dark">
+                    <h3 class="text-lg font-bold">Documents ({{ documents|length }})</h3>
+                </div>
+                <div class="p-4 space-y-3">
+                    {% for document in documents %}
+                        <a href="{{ url_for('documents.detail', document_id=document.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 hover:text-primary">
+                            <p class="text-sm font-semibold">{{ document.original_name }}</p>
+                            <p class="text-xs text-slate-500 mt-1">{{ document.file_type.value|upper }} · {{ document.created_at.strftime('%Y-%m-%d') }}</p>
+                        </a>
+                    {% else %}
+                        <p class="text-sm text-slate-500">No matching documents.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    {% else %}
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-6">
+            <p class="text-sm text-slate-500">Use the header search field to search projects, tasks, and documents.</p>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}

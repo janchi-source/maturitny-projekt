@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Admin Dashboard</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Governance overview, recent audit events, and export tooling</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{{ url_for('admin.audit_log') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Audit Log</a>
+        <a href="{{ url_for('admin.permissions_csv') }}" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold">Export Permissions CSV</a>
+    </div>
+</div>
+
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Users</p><p class="text-2xl font-black mt-2">{{ stats.users }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Projects</p><p class="text-2xl font-black mt-2">{{ stats.projects }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Tasks</p><p class="text-2xl font-black mt-2">{{ stats.tasks }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Memberships</p><p class="text-2xl font-black mt-2">{{ stats.memberships }}</p></div>
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+    <div class="p-5 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+        <h3 class="text-lg font-bold">Recent Audit Events</h3>
+        <a href="{{ url_for('admin.audit_log') }}" class="text-sm font-semibold text-primary">View all</a>
+    </div>
+    <div class="divide-y divide-slate-200 dark:divide-border-dark">
+        {% for entry in recent_audit %}
+            <div class="p-4">
+                <p class="text-sm font-semibold">{{ entry.action }}</p>
+                <p class="text-xs text-slate-500 mt-1">{{ entry.resource_type }}{% if entry.resource_id %} #{{ entry.resource_id }}{% endif %} · {{ entry.actor.username if entry.actor else 'System' }} · {{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                {% if entry.details %}
+                    <p class="text-xs text-slate-500 mt-1">{{ entry.details }}</p>
+                {% endif %}
+            </div>
+        {% else %}
+            <p class="p-4 text-sm text-slate-500">No audit events recorded yet.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

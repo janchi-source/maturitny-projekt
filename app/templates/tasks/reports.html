@@ -11,11 +11,13 @@
     <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Back to Tasks</a>
 </div>
 
-<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+<section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
     <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Total Tasks</p><p class="text-2xl font-black mt-2">{{ total_tasks }}</p></div>
     <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Completed</p><p class="text-2xl font-black mt-2">{{ done_tasks }}</p></div>
     <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Overdue</p><p class="text-2xl font-black mt-2">{{ overdue_tasks }}</p></div>
     <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Avg Cycle (h)</p><p class="text-2xl font-black mt-2">{{ avg_cycle_hours }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Story Points</p><p class="text-2xl font-black mt-2">{{ completed_story_points }}/{{ total_story_points }}</p></div>
+    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5"><p class="text-xs font-bold text-slate-500 uppercase">Avg Velocity</p><p class="text-2xl font-black mt-2">{{ avg_velocity_points }}</p><p class="text-[11px] text-slate-500 mt-1">closed sprint points</p></div>
 </section>
 
 <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -31,7 +33,8 @@
             {% for item in burndown %}
                 <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
                     <p class="font-bold">{{ item.sprint.name }}</p>
-                    <p class="text-xs text-slate-500 mt-1">Remaining {{ item.remaining }} / {{ item.total }}</p>
+                    <p class="text-xs text-slate-500 mt-1">Remaining {{ item.remaining }} / {{ item.total }} tasks</p>
+                    <p class="text-xs text-slate-500">Remaining {{ item.remaining_points }} / {{ item.total_points }} story points</p>
                 </div>
             {% else %}
                 <p class="text-sm text-slate-500">No active sprints available.</p>

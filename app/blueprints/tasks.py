@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import re
 from collections import defaultdict
@@ -22,10 +23,12 @@ from flask import (
 from flask_login import current_user, login_required
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
+from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
 from ..models.comment import Comment
+from ..models.document import Document, DocumentRevision
 from ..models.planning import (
     ApiToken,
     AutomationRule,
@@ -39,7 +42,17 @@ from ..models.planning import (
     TaskWatcher,
 )
 from ..models.project import Project
-from ..models.task import Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
+from ..models.task import (
+    Task,
+    TaskActivity,
+    TaskAttachment,
+    TaskAttachmentRevision,
+    TaskChecklistItem,
+    TaskDocumentLinkHistory,
+    TaskLabel,
+    TaskPriority,
+    TaskStatus,
+)
 from ..models.user import User
 
 
@@ -53,9 +66,15 @@ def index():
     status_filter = request.args.get("status", "").strip().lower()
     assignee_filter = request.args.get("assignee", "").strip()
     label_filter = request.args.get("label", "").strip().lower()
+    hierarchy_filter = request.args.get("hierarchy", "all").strip().lower()
     quick = request.args.get("quick", "").strip().lower()
 
-    query = Task.query.options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.sprint))
+    query = Task.query.options(
+        joinedload(Task.assignee),
+        joinedload(Task.labels),
+        joinedload(Task.sprint),
+        joinedload(Task.subtasks),
+    )
 
     if project_filter.isdigit():
         query = query.filter(Task.project_id == int(project_filter))
@@ -71,6 +90,15 @@ def index():
 
     if label_filter:
         query = query.join(Task.labels).filter(func.lower(TaskLabel.name) == label_filter)
+
+    if hierarchy_filter == "parents":
+        query = query.filter(Task.parent_task_id.is_(None), Task.subtasks.any())
+    elif hierarchy_filter == "subtasks":
+        query = query.filter(Task.parent_task_id.isnot(None))
+    elif hierarchy_filter == "top_level":
+        query = query.filter(Task.parent_task_id.is_(None))
+    else:
+        hierarchy_filter = "all"
 
     now = datetime.now(UTC).replace(tzinfo=None)
     if quick == "my_tasks":
@@ -95,6 +123,7 @@ def index():
         status_filter=status_filter,
         assignee_filter=assignee_filter,
         label_filter=label_filter,
+        hierarchy_filter=hierarchy_filter,
         quick=quick,
         status_values=[status.value for status in TaskStatus],
     )
@@ -106,7 +135,12 @@ def kanban():
     project_filter = request.args.get("project", "").strip()
     swimlane_mode = request.args.get("swimlane", "").strip().lower()
 
-    query = Task.query.options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.project))
+    query = Task.query.options(
+        joinedload(Task.assignee),
+        joinedload(Task.labels),
+        joinedload(Task.project),
+        joinedload(Task.subtasks),
+    )
     active_project = None
     setting = None
 
@@ -228,7 +262,12 @@ def save_filter():
         status=request.form.get("status", "").strip() or None,
         assignee_id=int(request.form.get("assignee")) if (request.form.get("assignee", "").isdigit()) else None,
         label=request.form.get("label", "").strip() or None,
+        hierarchy=request.form.get("hierarchy", "all").strip().lower() or "all",
     )
+
+    if saved.hierarchy not in {"all", "parents", "top_level", "subtasks"}:
+        saved.hierarchy = "all"
+
     db.session.add(saved)
     db.session.commit()
     flash("Filter saved.", "success")
@@ -250,6 +289,9 @@ def delete_filter(filter_id):
 def create():
     projects = Project.query.order_by(Project.name.asc()).all()
     users = User.query.order_by(User.username.asc()).all()
+    all_labels = TaskLabel.query.order_by(TaskLabel.name.asc()).all()
+    selected_project_id = request.form.get("project_id", "").strip() if request.method == "POST" else ""
+    parent_candidates = _parent_candidates(int(selected_project_id), exclude_task_id=None) if selected_project_id.isdigit() else []
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -260,7 +302,9 @@ def create():
         status_value = request.form.get("status", TaskStatus.TODO.value).strip().lower()
         due_date_raw = request.form.get("due_date", "").strip()
         progress_raw = request.form.get("progress", "0").strip()
+        story_points_raw = request.form.get("story_points", "0").strip()
         labels_raw = request.form.get("labels", "").strip()
+        parent_task_id_raw = request.form.get("parent_task_id", "").strip()
 
         if not title or not project_id.isdigit():
             flash("Task title and project are required.", "error")
@@ -270,6 +314,8 @@ def create():
                 task=None,
                 projects=projects,
                 users=users,
+                labels=all_labels,
+                parent_candidates=parent_candidates,
                 priority_values=[priority.value for priority in TaskPriority],
                 status_values=[status.value for status in TaskStatus],
             )
@@ -287,6 +333,8 @@ def create():
                 task=None,
                 projects=projects,
                 users=users,
+                labels=all_labels,
+                parent_candidates=parent_candidates,
                 priority_values=[priority.value for priority in TaskPriority],
                 status_values=[status.value for status in TaskStatus],
             )
@@ -300,17 +348,52 @@ def create():
                 task=None,
                 projects=projects,
                 users=users,
+                labels=all_labels,
+                parent_candidates=parent_candidates,
                 priority_values=[priority.value for priority in TaskPriority],
                 status_values=[status.value for status in TaskStatus],
             )
+
+        parent_task_id = _parse_parent_task_id(parent_task_id_raw)
+        if parent_task_id_raw and parent_task_id is None:
+            flash("Invalid parent task selection.", "error")
+            return render_template(
+                "tasks/form.html",
+                form_mode="create",
+                task=None,
+                projects=projects,
+                users=users,
+                parent_candidates=parent_candidates,
+                priority_values=[priority.value for priority in TaskPriority],
+                status_values=[status.value for status in TaskStatus],
+            )
+
+        parent_task = None
+        if parent_task_id is not None:
+            parent_task = Task.query.get_or_404(parent_task_id)
+            if parent_task.project_id != int(project_id):
+                flash("Parent task must belong to the same project.", "error")
+                return render_template(
+                    "tasks/form.html",
+                    form_mode="create",
+                    task=None,
+                    projects=projects,
+                    users=users,
+                    labels=all_labels,
+                    parent_candidates=parent_candidates,
+                    priority_values=[priority.value for priority in TaskPriority],
+                    status_values=[status.value for status in TaskStatus],
+                )
 
         task = Task(
             title=title,
             description=description,
             status=status,
             priority=priority,
+            story_points=_safe_story_points(story_points_raw),
             progress=_safe_progress(progress_raw),
             project_id=int(project_id),
+            parent_task_id=parent_task_id,
             assignee_id=int(assignee_id) if assignee_id.isdigit() else None,
             due_date=due_date,
         )
@@ -321,9 +404,12 @@ def create():
         _log_activity(task, "task_created", "Task created")
         _notify_assignment_if_needed(task, previous_assignee_id=None)
         _notify_due_date_if_needed(task, previous_due_date=None)
+        _sync_parent_rollups(task=task)
 
         db.session.commit()
         flash("Task created successfully.", "success")
+        if parent_task is not None:
+            return redirect(url_for("tasks.detail", task_id=parent_task.id))
         return redirect(url_for("tasks.detail", task_id=task.id))
 
     return render_template(
@@ -332,6 +418,8 @@ def create():
         task=None,
         projects=projects,
         users=users,
+        labels=all_labels,
+        parent_candidates=parent_candidates,
         priority_values=[priority.value for priority in TaskPriority],
         status_values=[status.value for status in TaskStatus],
     )
@@ -352,7 +440,11 @@ def detail(task_id):
             joinedload(Task.attachments).joinedload(TaskAttachment.uploader),
             joinedload(Task.blocking_tasks),
             joinedload(Task.blocked_tasks),
+            joinedload(Task.linked_documents),
             joinedload(Task.watchers).joinedload(TaskWatcher.user),
+            joinedload(Task.subtasks).joinedload(Task.assignee),
+            joinedload(Task.subtasks).joinedload(Task.labels),
+            joinedload(Task.parent_task),
         )
         .filter(Task.id == task_id)
         .first_or_404()
@@ -366,6 +458,12 @@ def detail(task_id):
         .all()
     )
 
+    linked_document_ids = [document.id for document in task.linked_documents]
+    available_documents_query = Document.query.filter(Document.project_id == task.project_id, Document.is_deleted.is_(False))
+    if linked_document_ids:
+        available_documents_query = available_documents_query.filter(~Document.id.in_(linked_document_ids))
+    available_documents = available_documents_query.order_by(Document.created_at.desc()).all()
+
     completion_total = len(task.checklist_items)
     completion_done = sum(1 for item in task.checklist_items if item.is_done)
 
@@ -377,14 +475,104 @@ def detail(task_id):
         projects=Project.query.order_by(Project.name.asc()).all(),
         users=User.query.order_by(User.username.asc()).all(),
         labels=TaskLabel.query.order_by(TaskLabel.name.asc()).all(),
+        available_documents=available_documents,
         available_dependencies=available_dependencies,
         sprints=Sprint.query.filter_by(project_id=task.project_id).order_by(Sprint.created_at.desc()).all(),
         priority_values=[priority.value for priority in TaskPriority],
         status_values=[status.value for status in TaskStatus],
+        parent_candidates=_parent_candidates(task.project_id, exclude_task_id=task.id),
+        dependency_mermaid=_build_dependency_mermaid(task.project_id, task.id),
         checklist_done=completion_done,
         checklist_total=completion_total,
         is_watching=current_watching,
     )
+
+
+@tasks_bp.route("/<int:task_id>/documents/link", methods=["POST"])
+@login_required
+def link_document(task_id):
+    task = Task.query.get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    document_ref_raw = request.form.get("document_id", "").strip()
+    document_id, expected_lock_version = _parse_document_ref(document_ref_raw)
+    if document_id is None:
+        flash("Select a valid document.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    document = Document.query.get_or_404(document_id)
+    if document.project_id != task.project_id or document.is_deleted:
+        flash("Document must belong to the same project.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if expected_lock_version is not None and document.lock_version != expected_lock_version:
+        flash("Document changed since you loaded the page. Refresh and try again.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if document in task.linked_documents:
+        flash("Document is already linked to this task.", "info")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    task.linked_documents.append(document)
+    latest_revision = (
+        DocumentRevision.query.filter_by(document_id=document.id)
+        .order_by(DocumentRevision.version.desc())
+        .first()
+    )
+    db.session.add(
+        TaskDocumentLinkHistory(
+            task_id=task.id,
+            document_id=document.id,
+            document_revision_id=latest_revision.id if latest_revision else None,
+            linked_by=current_user.id,
+            reason="Linked from task detail",
+        )
+    )
+    document.lock_version += 1
+    document.updated_by = current_user.id
+    _log_activity(task, "document_linked", f"Linked document: {document.original_name}")
+    db.session.commit()
+
+    flash("Document linked to task.", "success")
+    return redirect(url_for("tasks.detail", task_id=task.id))
+
+
+@tasks_bp.route("/<int:task_id>/documents/<int:document_id>/unlink", methods=["POST"])
+@login_required
+def unlink_document(task_id, document_id):
+    task = Task.query.get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    document = Document.query.get_or_404(document_id)
+    expected_lock_version_raw = request.form.get("lock_version", "").strip()
+    expected_lock_version = int(expected_lock_version_raw) if expected_lock_version_raw.isdigit() else None
+
+    if expected_lock_version is not None and document.lock_version != expected_lock_version:
+        flash("Document changed since you loaded the page. Refresh and try again.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if document in task.linked_documents:
+        task.linked_documents.remove(document)
+        link_record = (
+            TaskDocumentLinkHistory.query.filter_by(
+                task_id=task.id,
+                document_id=document.id,
+                unlinked_at=None,
+            )
+            .order_by(TaskDocumentLinkHistory.linked_at.desc())
+            .first()
+        )
+        if link_record:
+            link_record.unlinked_at = datetime.utcnow()
+        document.lock_version += 1
+        document.updated_by = current_user.id
+        _log_activity(task, "document_unlinked", f"Unlinked document: {document.original_name}")
+        db.session.commit()
+        flash("Document unlinked from task.", "info")
+    else:
+        flash("Document link not found.", "error")
+
+    return redirect(url_for("tasks.detail", task_id=task.id))
 
 
 @tasks_bp.route("/<int:task_id>/watch", methods=["POST"])
@@ -413,6 +601,7 @@ def edit(task_id):
 
     projects = Project.query.order_by(Project.name.asc()).all()
     users = User.query.order_by(User.username.asc()).all()
+    all_labels = TaskLabel.query.order_by(TaskLabel.name.asc()).all()
 
     if request.method == "POST":
         updates = {
@@ -423,8 +612,10 @@ def edit(task_id):
             "priority": request.form.get("priority"),
             "status": request.form.get("status"),
             "due_date": request.form.get("due_date"),
+            "story_points": request.form.get("story_points"),
             "progress": request.form.get("progress"),
             "labels": request.form.get("labels"),
+            "parent_task_id": request.form.get("parent_task_id"),
         }
 
         try:
@@ -437,6 +628,8 @@ def edit(task_id):
                 task=task,
                 projects=projects,
                 users=users,
+                labels=all_labels,
+                parent_candidates=_parent_candidates(task.project_id, exclude_task_id=task.id),
                 priority_values=[priority.value for priority in TaskPriority],
                 status_values=[status.value for status in TaskStatus],
             )
@@ -446,6 +639,7 @@ def edit(task_id):
             _run_automation_rules(task, changed_fields)
             _notify_assignment_if_needed(task, previous.get("assignee_id"))
             _notify_due_date_if_needed(task, previous.get("due_date"))
+            _sync_parent_rollups(task=task, previous_parent_id=previous.get("parent_task_id"))
 
         db.session.commit()
         flash("Task updated successfully.", "success")
@@ -457,6 +651,8 @@ def edit(task_id):
         task=task,
         projects=projects,
         users=users,
+        labels=all_labels,
+        parent_candidates=_parent_candidates(task.project_id, exclude_task_id=task.id),
         priority_values=[priority.value for priority in TaskPriority],
         status_values=[status.value for status in TaskStatus],
     )
@@ -479,15 +675,26 @@ def quick_update(task_id):
         flash(str(exc), "error")
         return redirect(url_for("tasks.detail", task_id=task.id))
 
+    parent_updates = []
     if changed_fields:
         _log_activity(task, "task_updated", f"Updated: {', '.join(changed_fields)}")
         _run_automation_rules(task, changed_fields)
         _notify_assignment_if_needed(task, previous.get("assignee_id"))
         _notify_due_date_if_needed(task, previous.get("due_date"))
+        parent_updates = _sync_parent_rollups(task=task, previous_parent_id=previous.get("parent_task_id"))
         db.session.commit()
 
     if request.is_json:
-        return jsonify({"success": True, "task_id": task.id, "changed": changed_fields})
+        return jsonify(
+            {
+                "success": True,
+                "task_id": task.id,
+                "status": task.status.value,
+                "progress": task.progress,
+                "changed": changed_fields,
+                "parent_updates": parent_updates,
+            }
+        )
 
     flash("Task details updated.", "success")
     return redirect(url_for("tasks.detail", task_id=task.id))
@@ -514,40 +721,75 @@ def bulk_action():
         else:
             _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
 
-    if action == "assign":
-        assignee_id_raw = request.form.get("bulk_assignee_id", "").strip()
-        assignee_id = int(assignee_id_raw) if assignee_id_raw.isdigit() else None
-        for task in tasks:
-            previous = task.assignee_id
-            task.assignee_id = assignee_id
-            _notify_assignment_if_needed(task, previous)
-            _log_activity(task, "bulk_assigned", "Bulk assign action")
-    elif action == "status":
-        status_raw = request.form.get("bulk_status", "").strip().lower()
-        try:
-            status_value = TaskStatus(status_raw)
-        except ValueError:
-            flash("Invalid bulk status.", "error")
+    parent_ids_to_sync = set()
+
+    try:
+        if action == "assign":
+            assignee_id_raw = request.form.get("bulk_assignee_id", "").strip()
+            assignee_id = int(assignee_id_raw) if assignee_id_raw.isdigit() else None
+            for task in tasks:
+                previous = task.assignee_id
+                task.assignee_id = assignee_id
+                _notify_assignment_if_needed(task, previous)
+                _log_activity(task, "bulk_assigned", "Bulk assign action")
+        elif action == "status":
+            status_raw = request.form.get("bulk_status", "").strip().lower()
+            try:
+                status_value = TaskStatus(status_raw)
+            except ValueError:
+                flash("Invalid bulk status.", "error")
+                return redirect(url_for("tasks.index"))
+            for task in tasks:
+                if _has_unfinished_transition_requirements(task, status_value):
+                    continue
+                task.status = status_value
+                _log_activity(task, "bulk_status_changed", f"Bulk status set to {status_value.value}")
+                if task.parent_task_id:
+                    parent_ids_to_sync.add(task.parent_task_id)
+        elif action == "label":
+            label_raw = request.form.get("bulk_label", "").strip()
+            for task in tasks:
+                combined = ",".join([label.name for label in task.labels] + ([label_raw] if label_raw else []))
+                _set_task_labels(task, combined)
+                _log_activity(task, "bulk_label_updated", "Bulk label action")
+        elif action == "delete":
+            selected_ids = {task.id for task in tasks}
+            parent_with_remaining_children = [
+                task
+                for task in tasks
+                if task.subtasks and any(subtask.id not in selected_ids for subtask in task.subtasks)
+            ]
+            if parent_with_remaining_children:
+                parent_names = ", ".join(f"#{task.id}" for task in parent_with_remaining_children[:5])
+                flash(
+                    f"Cannot bulk delete parent tasks with remaining subtasks ({parent_names}). Select subtasks too or re-parent them first.",
+                    "error",
+                )
+                return redirect(url_for("tasks.index"))
+            parent_ids_to_sync.update(
+                task.parent_task_id
+                for task in tasks
+                if task.parent_task_id and task.parent_task_id not in selected_ids
+            )
+            for task in tasks:
+                db.session.delete(task)
+            db.session.flush()
+        else:
+            flash("Unsupported bulk action.", "error")
             return redirect(url_for("tasks.index"))
-        for task in tasks:
-            if _unfinished_blockers(task) and status_value in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
-                continue
-            task.status = status_value
-            _log_activity(task, "bulk_status_changed", f"Bulk status set to {status_value.value}")
-    elif action == "label":
-        label_raw = request.form.get("bulk_label", "").strip()
-        for task in tasks:
-            combined = ",".join([label.name for label in task.labels] + ([label_raw] if label_raw else []))
-            _set_task_labels(task, combined)
-            _log_activity(task, "bulk_label_updated", "Bulk label action")
-    elif action == "delete":
-        for task in tasks:
-            db.session.delete(task)
-    else:
-        flash("Unsupported bulk action.", "error")
+
+        if parent_ids_to_sync:
+            _sync_parent_rollups(parent_ids=parent_ids_to_sync)
+
+        db.session.commit()
+    except HTTPException:
+        db.session.rollback()
+        raise
+    except Exception:
+        db.session.rollback()
+        flash("Bulk action failed and was rolled back.", "error")
         return redirect(url_for("tasks.index"))
 
-    db.session.commit()
     flash("Bulk action executed.", "success")
     return redirect(url_for("tasks.index"))
 
@@ -557,7 +799,16 @@ def bulk_action():
 def delete(task_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.MANAGER)
+
+    if task.subtasks:
+        flash("Cannot delete a parent task while subtasks exist. Re-parent or delete subtasks first.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    parent_id = task.parent_task_id
     db.session.delete(task)
+    db.session.flush()
+    if parent_id:
+        _sync_parent_rollups(parent_ids={parent_id})
     db.session.commit()
     flash("Task deleted.", "info")
     return redirect(url_for("tasks.index"))
@@ -581,6 +832,7 @@ def update_status(task_id):
         return jsonify({"success": False, "error": "Invalid status"}), 400
 
     blockers = _unfinished_blockers(task)
+    unfinished_subtasks = _unfinished_subtasks(task)
     if blockers and requested_status in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
         return jsonify(
             {
@@ -589,17 +841,33 @@ def update_status(task_id):
                 "blockers": [blocker.title for blocker in blockers],
             }
         ), 409
+    if unfinished_subtasks and requested_status in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
+        return jsonify(
+            {
+                "success": False,
+                "error": "Cannot move parent task while subtasks are unfinished.",
+                "subtasks": [subtask.title for subtask in unfinished_subtasks],
+            }
+        ), 409
 
     previous_status = task.status
     task.status = requested_status
     _log_activity(task, "status_changed", f"Status changed to {requested_status.value}")
     _run_automation_rules(task, ["status"])
+    parent_updates = _sync_parent_rollups(task=task)
 
     if previous_status != requested_status:
         _notify_watchers(task, "Task status changed", f"{task.title} moved to {requested_status.value}.")
 
     db.session.commit()
-    return jsonify({"success": True, "task_id": task.id, "status": task.status.value})
+    return jsonify(
+        {
+            "success": True,
+            "task_id": task.id,
+            "status": task.status.value,
+            "parent_updates": parent_updates,
+        }
+    )
 
 
 @tasks_bp.route("/<int:task_id>/labels", methods=["POST"])
@@ -637,6 +905,64 @@ def add_checklist_item(task_id):
     db.session.commit()
     flash("Checklist item added.", "success")
     return redirect(url_for("tasks.detail", task_id=task.id))
+
+
+@tasks_bp.route("/<int:task_id>/checklist/<int:item_id>/edit", methods=["POST"])
+@login_required
+def edit_checklist_item(task_id, item_id):
+    task = Task.query.get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    item = TaskChecklistItem.query.filter_by(id=item_id, task_id=task.id).first_or_404()
+    title = request.form.get("title", "").strip()
+    if not title:
+        flash("Checklist item title is required.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if item.title != title:
+        original_title = item.title
+        item.title = title
+        _log_activity(task, "checklist_item_edited", f"Checklist item renamed: {original_title} -> {title}")
+        db.session.commit()
+        flash("Checklist item updated.", "success")
+    else:
+        flash("No checklist item changes detected.", "info")
+
+    return redirect(url_for("tasks.detail", task_id=task.id))
+
+
+@tasks_bp.route("/<int:task_id>/subtasks", methods=["POST"])
+@login_required
+def create_subtask(task_id):
+    parent_task = Task.query.get_or_404(task_id)
+    _require_project_role(parent_task.project_id, ProjectMembershipRole.MEMBER)
+
+    title = request.form.get("title", "").strip()
+    if not title:
+        flash("Subtask title is required.", "error")
+        return redirect(url_for("tasks.detail", task_id=parent_task.id))
+
+    subtask = Task(
+        title=title,
+        description=request.form.get("description", "").strip(),
+        project_id=parent_task.project_id,
+        parent_task_id=parent_task.id,
+        status=TaskStatus.TODO,
+        priority=TaskPriority.MEDIUM,
+        progress=0,
+        assignee_id=None,
+        due_date=None,
+    )
+    db.session.add(subtask)
+    db.session.flush()
+
+    _log_activity(parent_task, "subtask_created", f"Subtask created: #{subtask.id} {subtask.title}")
+    _log_activity(subtask, "task_created", f"Subtask created under: #{parent_task.id} {parent_task.title}")
+    _sync_parent_rollups(task=subtask)
+    db.session.commit()
+
+    flash("Subtask created.", "success")
+    return redirect(url_for("tasks.detail", task_id=parent_task.id))
 
 
 @tasks_bp.route("/<int:task_id>/checklist/<int:item_id>/toggle", methods=["POST"])
@@ -753,17 +1079,31 @@ def upload_attachment(task_id):
     file.save(absolute_path)
 
     version = TaskAttachment.query.filter_by(task_id=task.id, original_name=original_name).count() + 1
+    file_hash = _sha256_for_file(absolute_path)
     attachment = TaskAttachment(
         task_id=task.id,
         filename=relative_path.as_posix(),
         original_name=original_name,
         content_type=file.content_type,
         file_size=absolute_path.stat().st_size,
+        file_hash=file_hash,
         version=version,
         version_note=version_note or None,
         uploaded_by=current_user.id,
     )
     db.session.add(attachment)
+    db.session.flush()
+    db.session.add(
+        TaskAttachmentRevision(
+            attachment_id=attachment.id,
+            version=attachment.version,
+            filename=attachment.filename,
+            file_size=attachment.file_size,
+            file_hash=file_hash,
+            version_note=attachment.version_note,
+            created_by=current_user.id,
+        )
+    )
     _log_activity(task, "attachment_uploaded", f"{original_name} (v{version})")
     db.session.commit()
 
@@ -777,7 +1117,7 @@ def download_attachment(task_id, attachment_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.VIEWER)
 
-    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id).first_or_404()
+    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id, is_deleted=False).first_or_404()
     file_path = Path(current_app.config.get("UPLOAD_FOLDER", "uploads")) / attachment.filename
     if not file_path.exists():
         abort(404)
@@ -790,7 +1130,7 @@ def preview_attachment(task_id, attachment_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.VIEWER)
 
-    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id).first_or_404()
+    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id, is_deleted=False).first_or_404()
     file_path = Path(current_app.config.get("UPLOAD_FOLDER", "uploads")) / attachment.filename
     if not file_path.exists():
         abort(404)
@@ -805,15 +1145,9 @@ def delete_attachment(task_id, attachment_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
 
-    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id).first_or_404()
-    file_path = Path(current_app.config.get("UPLOAD_FOLDER", "uploads")) / attachment.filename
-    if file_path.exists():
-        try:
-            file_path.unlink()
-        except OSError:
-            pass
-
-    db.session.delete(attachment)
+    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id, is_deleted=False).first_or_404()
+    attachment.is_deleted = True
+    attachment.deleted_at = datetime.utcnow()
     _log_activity(task, "attachment_deleted", attachment.original_name)
     db.session.commit()
 
@@ -1037,6 +1371,8 @@ def reports():
     total_tasks = len(tasks)
     done_tasks = sum(1 for task in tasks if task.status == TaskStatus.DONE)
     overdue_tasks = sum(1 for task in tasks if task.due_date and task.due_date < now and task.status != TaskStatus.DONE)
+    total_story_points = sum(task.story_points for task in tasks)
+    completed_story_points = sum(task.story_points for task in tasks if task.status == TaskStatus.DONE)
 
     throughput_window = now - timedelta(days=14)
     throughput = (
@@ -1068,7 +1404,26 @@ def reports():
         sprint_tasks = [task for task in sprint.tasks]
         total = len(sprint_tasks)
         remaining = sum(1 for task in sprint_tasks if task.status != TaskStatus.DONE)
-        burndown.append({"sprint": sprint, "total": total, "remaining": remaining})
+        total_points = sum(task.story_points for task in sprint_tasks)
+        remaining_points = sum(task.story_points for task in sprint_tasks if task.status != TaskStatus.DONE)
+        burndown.append(
+            {
+                "sprint": sprint,
+                "total": total,
+                "remaining": remaining,
+                "total_points": total_points,
+                "remaining_points": remaining_points,
+            }
+        )
+
+    closed_sprints = Sprint.query.filter_by(status=SprintStatus.CLOSED).all()
+    closed_velocity_points = []
+    for sprint in closed_sprints:
+        completed_points = sum(task.story_points for task in sprint.tasks if task.status == TaskStatus.DONE)
+        closed_velocity_points.append(completed_points)
+    avg_velocity_points = (
+        round(sum(closed_velocity_points) / len(closed_velocity_points), 2) if closed_velocity_points else 0
+    )
 
     completion_trend = []
     for day_offset in range(6, -1, -1):
@@ -1089,8 +1444,11 @@ def reports():
         total_tasks=total_tasks,
         done_tasks=done_tasks,
         overdue_tasks=overdue_tasks,
+        total_story_points=total_story_points,
+        completed_story_points=completed_story_points,
         throughput=throughput,
         avg_cycle_hours=avg_cycle_hours,
+        avg_velocity_points=avg_velocity_points,
         burndown=burndown,
         completion_trend=completion_trend,
     )
@@ -1128,7 +1486,19 @@ def integrations():
 def export_csv():
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["id", "title", "description", "project_id", "assignee_id", "status", "priority", "due_date", "progress", "labels"])
+    writer.writerow([
+        "id",
+        "title",
+        "description",
+        "project_id",
+        "assignee_id",
+        "status",
+        "priority",
+        "due_date",
+        "story_points",
+        "progress",
+        "labels",
+    ])
 
     for task in Task.query.order_by(Task.id.asc()).all():
         labels = ",".join(label.name for label in task.labels)
@@ -1142,6 +1512,7 @@ def export_csv():
                 task.status.value,
                 task.priority.value,
                 task.due_date.strftime("%Y-%m-%d") if task.due_date else "",
+                task.story_points,
                 task.progress,
                 labels,
             ]
@@ -1198,6 +1569,7 @@ def import_csv():
             status=status,
             priority=priority,
             due_date=due_date,
+            story_points=_safe_story_points(row.get("story_points") or "0"),
             progress=_safe_progress(row.get("progress") or "0"),
         )
         db.session.add(task)
@@ -1227,13 +1599,22 @@ def webhook_events():
     if event == "task.create":
         title = str(payload.get("title", "")).strip()
         project_id = int(payload.get("project_id")) if str(payload.get("project_id", "")).isdigit() else None
+        parent_task_id = int(payload.get("parent_task_id")) if str(payload.get("parent_task_id", "")).isdigit() else None
         if not title or project_id is None:
             return jsonify({"success": False, "error": "Invalid task.create payload"}), 400
+
+        if parent_task_id is not None:
+            parent_task = Task.query.get(parent_task_id)
+            if not parent_task:
+                return jsonify({"success": False, "error": "Parent task not found"}), 400
+            if parent_task.project_id != project_id:
+                return jsonify({"success": False, "error": "Parent task must belong to the same project"}), 400
 
         task = Task(
             title=title,
             description=str(payload.get("description", "")).strip(),
             project_id=project_id,
+            parent_task_id=parent_task_id,
             status=TaskStatus.TODO,
             priority=TaskPriority.MEDIUM,
             progress=0,
@@ -1241,6 +1622,8 @@ def webhook_events():
         db.session.add(task)
         db.session.flush()
         _log_activity(task, "task_created", "Created by webhook")
+        if parent_task_id:
+            _sync_parent_rollups(parent_ids={parent_task_id})
         db.session.commit()
         return jsonify({"success": True, "task_id": task.id})
 
@@ -1252,11 +1635,22 @@ def webhook_events():
 
         task = Task.query.get_or_404(task_id)
         try:
-            task.status = TaskStatus(status_raw)
+            requested_status = TaskStatus(status_raw)
         except ValueError:
             return jsonify({"success": False, "error": "Invalid status"}), 400
 
+        if _has_unfinished_transition_requirements(task, requested_status):
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Cannot move task while blockers or subtasks are unfinished",
+                }
+            ), 409
+
+        task.status = requested_status
+
         _log_activity(task, "status_changed", f"Status changed to {task.status.value} by webhook")
+        _sync_parent_rollups(task=task)
         db.session.commit()
         return jsonify({"success": True, "task_id": task.id, "status": task.status.value})
 
@@ -1342,6 +1736,7 @@ def _apply_task_updates(task, payload, allow_partial):
         "due_date": task.due_date,
         "status": task.status,
         "priority": task.priority,
+        "parent_task_id": task.parent_task_id,
     }
 
     if not allow_partial or "title" in payload:
@@ -1368,6 +1763,34 @@ def _apply_task_updates(task, payload, allow_partial):
             task.project_id = project_id_value
             changed_fields.append("project")
 
+        if task.parent_task_id is not None and task.parent_task and task.parent_task.project_id != task.project_id:
+            task.parent_task_id = None
+            if "parent task" not in changed_fields:
+                changed_fields.append("parent task")
+
+    if not allow_partial or "parent_task_id" in payload:
+        parent_task_raw = payload.get("parent_task_id")
+        parent_task_id = _parse_parent_task_id(parent_task_raw)
+
+        if parent_task_raw not in (None, "") and parent_task_id is None:
+            raise ValueError("Invalid parent task selection.")
+
+        if parent_task_id == task.id:
+            raise ValueError("Task cannot be its own parent.")
+
+        if parent_task_id is not None:
+            parent = Task.query.get(parent_task_id)
+            if not parent:
+                raise ValueError("Selected parent task does not exist.")
+            if parent.project_id != task.project_id:
+                raise ValueError("Parent task must belong to the same project.")
+            if _task_is_descendant(candidate_parent=parent, task=task):
+                raise ValueError("Parent task cannot be a descendant of this task.")
+
+        if task.parent_task_id != parent_task_id:
+            task.parent_task_id = parent_task_id
+            changed_fields.append("parent task")
+
     if not allow_partial or "assignee_id" in payload:
         assignee_raw = str(payload.get("assignee_id") or "").strip()
         assignee_value = int(assignee_raw) if assignee_raw.isdigit() else None
@@ -1393,9 +1816,8 @@ def _apply_task_updates(task, payload, allow_partial):
         except ValueError as exc:
             raise ValueError("Invalid status value.") from exc
 
-        blockers = _unfinished_blockers(task)
-        if blockers and status_value in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
-            raise ValueError("Task has unfinished dependencies and cannot be moved to in_review or done.")
+        if _has_unfinished_transition_requirements(task, status_value):
+            raise ValueError("Task has unfinished dependencies or subtasks and cannot be moved to in_review or done.")
 
         if task.status != status_value:
             task.status = status_value
@@ -1417,12 +1839,77 @@ def _apply_task_updates(task, payload, allow_partial):
             task.progress = progress
             changed_fields.append("progress")
 
+    if not allow_partial or "story_points" in payload:
+        story_points_raw = str(payload.get("story_points") or "0").strip()
+        story_points = _safe_story_points(story_points_raw)
+        if task.story_points != story_points:
+            task.story_points = story_points
+            changed_fields.append("story points")
+
     if "labels" in payload:
         labels_changed = _set_task_labels(task, payload.get("labels"))
         if labels_changed:
             changed_fields.append("labels")
 
     return changed_fields, previous
+
+
+def _parse_parent_task_id(value):
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if not raw:
+        return None
+    if not raw.isdigit():
+        return None
+    return int(raw)
+
+
+def _parent_candidates(project_id, exclude_task_id=None):
+    query = Task.query.filter(Task.project_id == project_id)
+    if exclude_task_id is not None:
+        query = query.filter(Task.id != exclude_task_id)
+    return query.order_by(Task.created_at.desc()).all()
+
+
+def _task_is_descendant(candidate_parent, task):
+    cursor = candidate_parent
+    visited = set()
+    while cursor is not None:
+        if cursor.id in visited:
+            return True
+        visited.add(cursor.id)
+        if cursor.id == task.id:
+            return True
+        cursor = cursor.parent_task
+    return False
+
+
+def _build_dependency_mermaid(project_id, current_task_id):
+    tasks = (
+        Task.query.options(joinedload(Task.blocking_tasks), joinedload(Task.blocked_tasks))
+        .filter(Task.project_id == project_id)
+        .all()
+    )
+
+    nodes = []
+    edges = []
+    for task in tasks:
+        safe_title = (task.title or "").replace('"', "'")
+        label = f"#{task.id} {safe_title[:42]}"
+        nodes.append(f'T{task.id}["{label}"]')
+        for blocker in task.blocking_tasks:
+            edges.append(f"T{blocker.id} --> T{task.id}")
+
+    if not edges:
+        return ""
+
+    graph_lines = ["graph TD"]
+    graph_lines.extend(nodes)
+    graph_lines.extend(edges)
+    graph_lines.append(f"classDef current fill:#1d4ed8,color:#fff,stroke:#1e40af,stroke-width:2px")
+    graph_lines.append(f"class T{current_task_id} current")
+    return "\n".join(graph_lines)
 
 
 def _set_task_labels(task, raw_value):
@@ -1470,6 +1957,72 @@ def _unfinished_blockers(task):
     return [blocker for blocker in task.blocking_tasks if blocker.status != TaskStatus.DONE]
 
 
+def _unfinished_subtasks(task):
+    return [subtask for subtask in task.subtasks if subtask.status != TaskStatus.DONE]
+
+
+def _has_unfinished_transition_requirements(task, next_status):
+    if next_status not in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
+        return False
+    return bool(_unfinished_blockers(task) or _unfinished_subtasks(task))
+
+
+def _sync_parent_rollups(task=None, previous_parent_id=None, parent_ids=None):
+    affected_parent_ids = set(parent_ids or [])
+
+    if task is not None and task.parent_task_id:
+        affected_parent_ids.add(task.parent_task_id)
+    if previous_parent_id:
+        affected_parent_ids.add(previous_parent_id)
+
+    snapshots_by_id = {}
+    for parent_id in affected_parent_ids:
+        for snapshot in _rollup_parent_chain(parent_id):
+            snapshots_by_id[snapshot["id"]] = snapshot
+
+    return list(snapshots_by_id.values())
+
+
+def _rollup_parent_chain(parent_id):
+    visited = set()
+    current = Task.query.get(parent_id)
+    snapshots = []
+
+    while current is not None and current.id not in visited:
+        visited.add(current.id)
+        subtasks = Task.query.filter_by(parent_task_id=current.id).all()
+
+        if subtasks:
+            done_count = sum(1 for subtask in subtasks if subtask.status == TaskStatus.DONE)
+            progress_rollup = int(round((done_count / len(subtasks)) * 100))
+            has_blockers = bool(_unfinished_blockers(current))
+
+            if current.progress != progress_rollup:
+                current.progress = progress_rollup
+                _log_activity(current, "subtask_progress_rollup", f"Progress rolled up to {progress_rollup}% from subtasks")
+
+            if done_count == len(subtasks) and not has_blockers and current.status != TaskStatus.DONE:
+                current.status = TaskStatus.DONE
+                _log_activity(current, "subtasks_completed", "All subtasks completed; parent task auto-closed")
+            elif (done_count < len(subtasks) or has_blockers) and current.status == TaskStatus.DONE:
+                current.status = TaskStatus.IN_PROGRESS
+                _log_activity(current, "subtasks_reopened", "Subtasks reopened or added; parent task moved back to in progress")
+
+            snapshots.append(
+                {
+                    "id": current.id,
+                    "status": current.status.value,
+                    "progress": current.progress,
+                    "subtask_done": done_count,
+                    "subtask_total": len(subtasks),
+                }
+            )
+
+        current = current.parent_task
+
+    return snapshots
+
+
 def _creates_dependency_cycle(blocker, target):
     stack = [target]
     visited = set()
@@ -1513,6 +2066,15 @@ def _safe_progress(value):
     return max(0, min(progress, 100))
 
 
+def _safe_story_points(value):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+
+    return max(parsed, 0)
+
+
 def _safe_int_nullable(value):
     if value is None:
         return None
@@ -1550,6 +2112,31 @@ def _parse_date_or_none(value):
 
 def _allowed_attachment_extensions():
     return {".pdf", ".docx", ".txt", ".png", ".jpg", ".jpeg", ".webp"}
+
+
+def _sha256_for_file(file_path):
+    hasher = hashlib.sha256()
+    with file_path.open("rb") as file_handle:
+        while True:
+            chunk = file_handle.read(8192)
+            if not chunk:
+                break
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def _parse_document_ref(value):
+    raw = (value or "").strip()
+    if not raw:
+        return None, None
+
+    parts = raw.split(":", 1)
+    if not parts[0].isdigit():
+        return None, None
+
+    document_id = int(parts[0])
+    expected_lock_version = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else None
+    return document_id, expected_lock_version
 
 
 def _notify_user(user_id, title, message, kind="event"):

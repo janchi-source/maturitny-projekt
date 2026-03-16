@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request
 from flask_login import login_required
 
 from ..models.document import Document
@@ -111,4 +111,47 @@ def index():
         ai_insights=ai_insights,
         TaskStatus=TaskStatus,
         TaskPriority=TaskPriority,
+    )
+
+
+@dashboard_bp.route("/search")
+@login_required
+def search():
+    query = request.args.get("q", "").strip()
+
+    projects = []
+    tasks = []
+    documents = []
+
+    if query:
+        like_value = f"%{query}%"
+        projects = (
+            Project.query.filter(
+                Project.name.ilike(like_value) | Project.description.ilike(like_value)
+            )
+            .order_by(Project.updated_at.desc())
+            .limit(8)
+            .all()
+        )
+        tasks = (
+            Task.query.filter(
+                Task.title.ilike(like_value) | Task.description.ilike(like_value)
+            )
+            .order_by(Task.created_at.desc())
+            .limit(8)
+            .all()
+        )
+        documents = (
+            Document.query.filter(Document.original_name.ilike(like_value))
+            .order_by(Document.created_at.desc())
+            .limit(8)
+            .all()
+        )
+
+    return render_template(
+        "dashboard/search.html",
+        query=query,
+        projects=projects,
+        tasks=tasks,
+        documents=documents,
     )

@@ -34,6 +34,7 @@
             <input type="hidden" name="status" value="{{ status_filter }}">
             <input type="hidden" name="assignee" value="{{ assignee_filter }}">
             <input type="hidden" name="label" value="{{ label_filter }}">
+            <input type="hidden" name="hierarchy" value="{{ hierarchy_filter }}">
             <input name="name" type="text" required placeholder="Save current filter as..." class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
             <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Save Filter</button>
         </form>
@@ -48,7 +49,7 @@
     <div class="flex flex-wrap gap-2 items-center">
         <a href="{{ url_for('tasks.export_csv') }}" class="px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark text-xs font-bold">Export CSV</a>
         {% for saved in saved_filters %}
-            <a href="{{ url_for('tasks.index', project=saved.project_id or '', status=saved.status or '', assignee=saved.assignee_id or '', label=saved.label or '') }}" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-border-dark/50 text-xs font-semibold">{{ saved.name }}</a>
+            <a href="{{ url_for('tasks.index', project=saved.project_id or '', status=saved.status or '', assignee=saved.assignee_id or '', label=saved.label or '', hierarchy=saved.hierarchy or 'all') }}" class="px-3 py-2 rounded-lg bg-slate-100 dark:bg-border-dark/50 text-xs font-semibold">{{ saved.name }}</a>
             <form method="post" action="{{ url_for('tasks.delete_filter', filter_id=saved.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="text-xs text-red-500 font-semibold">×</button>
@@ -58,7 +59,7 @@
 </section>
 
 <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-4 sm:p-5 mb-6">
-    <form method="get" class="grid grid-cols-1 lg:grid-cols-5 gap-3">
+    <form method="get" class="grid grid-cols-1 lg:grid-cols-6 gap-3">
         <select name="project" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
             <option value="">All projects</option>
             {% for project in projects %}
@@ -85,6 +86,13 @@
             {% for label in labels %}
                 <option value="{{ label.name|lower }}" {% if label_filter == label.name|lower %}selected{% endif %}>{{ label.name }}</option>
             {% endfor %}
+        </select>
+
+        <select name="hierarchy" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+            <option value="all" {% if hierarchy_filter == 'all' %}selected{% endif %}>All hierarchy</option>
+            <option value="parents" {% if hierarchy_filter == 'parents' %}selected{% endif %}>Parent tasks</option>
+            <option value="top_level" {% if hierarchy_filter == 'top_level' %}selected{% endif %}>Top-level only</option>
+            <option value="subtasks" {% if hierarchy_filter == 'subtasks' %}selected{% endif %}>Subtasks only</option>
         </select>
 
         <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Apply Filters</button>
@@ -127,6 +135,15 @@
                     <td class="px-4 py-4"><input type="checkbox" name="task_ids" value="{{ task.id }}" class="bulk-task-checkbox"></td>
                     <td class="px-6 py-4">
                         <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="font-semibold hover:text-primary">{{ task.title }}</a>
+                        {% if task.parent_task_id %}
+                            <p class="mt-1 text-[11px] text-slate-500">Subtask of #{{ task.parent_task_id }}</p>
+                        {% elif task.subtasks %}
+                            {% set subtask_done = task.subtasks|selectattr('status.value', 'equalto', 'done')|list|length %}
+                            <div class="mt-1 flex flex-wrap items-center gap-2">
+                                <p class="text-[11px] text-slate-500">Parent task · {{ task.subtasks|length }} subtasks</p>
+                                <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300 text-[10px] font-semibold">Rollup {{ subtask_done }}/{{ task.subtasks|length }}</span>
+                            </div>
+                        {% endif %}
                         {% if task.labels %}
                             <div class="mt-2 flex flex-wrap gap-1">
                                 {% for label in task.labels %}

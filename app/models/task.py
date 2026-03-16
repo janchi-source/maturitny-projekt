@@ -32,6 +32,13 @@ task_dependencies = db.Table(
 )
 
 
+task_document_links = db.Table(
+    "task_document_links",
+    db.Column("task_id", db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("document_id", db.Integer, db.ForeignKey("documents.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 class TaskLabel(db.Model):
     __tablename__ = "task_labels_master"
 
@@ -78,13 +85,58 @@ class TaskAttachment(db.Model):
     original_name = db.Column(db.String(255), nullable=False)
     content_type = db.Column(db.String(120), nullable=True)
     file_size = db.Column(db.Integer, nullable=False, default=0)
+    file_hash = db.Column(db.String(64), nullable=True)
     version = db.Column(db.Integer, nullable=False, default=1)
+    lock_version = db.Column(db.Integer, nullable=False, default=1)
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     version_note = db.Column(db.Text, nullable=True)
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     task = db.relationship("Task", back_populates="attachments")
     uploader = db.relationship("User", back_populates="task_attachments", foreign_keys=[uploaded_by])
+    revisions = db.relationship(
+        "TaskAttachmentRevision",
+        back_populates="attachment",
+        cascade="all, delete-orphan",
+        order_by="TaskAttachmentRevision.version.desc()",
+    )
+
+
+class TaskAttachmentRevision(db.Model):
+    __tablename__ = "task_attachment_revisions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    attachment_id = db.Column(db.Integer, db.ForeignKey("task_attachments.id", ondelete="CASCADE"), nullable=False)
+    version = db.Column(db.Integer, nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    file_size = db.Column(db.Integer, nullable=False)
+    file_hash = db.Column(db.String(64), nullable=False)
+    version_note = db.Column(db.String(255), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    attachment = db.relationship("TaskAttachment", back_populates="revisions")
+    creator = db.relationship("User", foreign_keys=[created_by])
+
+
+class TaskDocumentLinkHistory(db.Model):
+    __tablename__ = "task_document_link_history"
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
+    document_id = db.Column(db.Integer, db.ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
+    document_revision_id = db.Column(db.Integer, db.ForeignKey("document_revisions.id", ondelete="SET NULL"), nullable=True)
+    linked_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reason = db.Column(db.String(255), nullable=True)
+    linked_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    unlinked_at = db.Column(db.DateTime, nullable=True)
+
+    task = db.relationship("Task")
+    document = db.relationship("Document")
+    document_revision = db.relationship("DocumentRevision")
+    linker = db.relationship("User", foreign_keys=[linked_by])
 
 
 class Task(db.Model):
@@ -103,14 +155,29 @@ class Task(db.Model):
         nullable=False,
         default=TaskPriority.MEDIUM,
     )
+    story_points = db.Column(db.Integer, nullable=False, default=0)
     progress = db.Column(db.Integer, nullable=False, default=0)
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    parent_task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True)
     sprint_id = db.Column(db.Integer, db.ForeignKey("sprints.id", ondelete="SET NULL"), nullable=True)
     assignee_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     due_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     project = db.relationship("Project", back_populates="tasks")
+    parent_task = db.relationship(
+        "Task",
+        remote_side=[id],
+        back_populates="subtasks",
+        foreign_keys=[parent_task_id],
+    )
+    subtasks = db.relationship(
+        "Task",
+        back_populates="parent_task",
+        foreign_keys=[parent_task_id],
+        passive_deletes=True,
+        order_by="Task.created_at.asc()",
+    )
     sprint = db.relationship("Sprint", back_populates="tasks")
     assignee = db.relationship("User", back_populates="assigned_tasks", foreign_keys=[assignee_id])
     comments = db.relationship("Comment", back_populates="task", cascade="all, delete-orphan")
@@ -132,6 +199,12 @@ class Task(db.Model):
         back_populates="task",
         cascade="all, delete-orphan",
         order_by="TaskAttachment.created_at.desc()",
+    )
+    linked_documents = db.relationship(
+        "Document",
+        secondary=task_document_links,
+        back_populates="linked_tasks",
+        lazy="selectin",
     )
     blocked_tasks = db.relationship(
         "Task",

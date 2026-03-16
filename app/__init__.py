@@ -1,18 +1,22 @@
 from pathlib import Path
 
 from flask import Flask, render_template
+from flask_login import current_user
 
 from config import Config
 
 from .blueprints.ai_chat import ai_chat_bp
+from .blueprints.admin import admin_bp
 from .blueprints.auth import auth_bp
 from .blueprints.dashboard import dashboard_bp
 from .blueprints.documents import documents_bp
 from .blueprints.projects import projects_bp
+from .blueprints.settings import settings_bp
 from .blueprints.tasks import tasks_bp
 from .blueprints.team import team_bp
 from .extensions import csrf, db, login_manager
 from .models import init_db
+from .models.planning import Notification
 
 
 def create_app(config_class=Config):
@@ -37,6 +41,32 @@ def create_app(config_class=Config):
     app.register_blueprint(documents_bp, url_prefix="/documents")
     app.register_blueprint(ai_chat_bp, url_prefix="/ai-chat")
     app.register_blueprint(team_bp, url_prefix="/team")
+    app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(settings_bp, url_prefix="/settings")
+
+    @app.context_processor
+    def inject_header_notifications():
+        if not getattr(current_user, "is_authenticated", False):
+            return {
+                "header_notifications": [],
+                "header_unread_notifications_count": 0,
+            }
+
+        notifications = (
+            Notification.query.filter_by(user_id=current_user.id, channel="in_app")
+            .order_by(Notification.created_at.desc())
+            .limit(6)
+            .all()
+        )
+        unread_count = Notification.query.filter_by(
+            user_id=current_user.id,
+            channel="in_app",
+            is_read=False,
+        ).count()
+        return {
+            "header_notifications": notifications,
+            "header_unread_notifications_count": unread_count,
+        }
 
     register_error_handlers(app)
 

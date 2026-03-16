@@ -1,11 +1,13 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import func
 
 from ..extensions import db
 from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher
 from ..models.project import Project, ProjectStatus
 from ..models.user import User
 from ..models.user import UserRole
+from ..services.audit_service import log_audit
 
 
 projects_bp = Blueprint("projects", __name__)
@@ -17,7 +19,7 @@ def index():
     search = request.args.get("search", "").strip()
     status_filter = request.args.get("status", "").strip().lower()
 
-    query = Project.query
+    query = _accessible_projects_query(ProjectMembershipRole.VIEWER)
     if search:
         query = query.filter(Project.name.ilike(f"%{search}%"))
 
@@ -77,6 +79,13 @@ def create():
         )
         db.session.add(project)
         db.session.commit()
+        log_audit(
+            action="project.created",
+            resource_type="project",
+            resource_id=project.id,
+            details=f"Project created: {project.name}",
+        )
+        db.session.commit()
 
         flash("Project created successfully.", "success")
         return redirect(url_for("projects.detail", project_id=project.id))
@@ -93,6 +102,7 @@ def create():
 @login_required
 def detail(project_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_role(project.id, ProjectMembershipRole.VIEWER)
     active_tab = request.args.get("tab", "tasks").strip().lower()
     if active_tab not in {"tasks", "documents", "team"}:
         active_tab = "tasks"
@@ -139,13 +149,26 @@ def detail(project_id):
 @login_required
 def toggle_watch(project_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_role(project.id, ProjectMembershipRole.VIEWER)
     watcher = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first()
 
     if watcher:
         db.session.delete(watcher)
+        log_audit(
+            action="project.watch_removed",
+            resource_type="project",
+            resource_id=project.id,
+            details=f"Watcher removed: user #{current_user.id}",
+        )
         flash("Stopped watching project.", "info")
     else:
         db.session.add(ProjectWatcher(project_id=project.id, user_id=current_user.id))
+        log_audit(
+            action="project.watch_added",
+            resource_type="project",
+            resource_id=project.id,
+            details=f"Watcher added: user #{current_user.id}",
+        )
         flash("Now watching project.", "success")
 
     db.session.commit()
@@ -175,8 +198,18 @@ def upsert_member(project_id):
     if not membership:
         membership = ProjectMembership(project_id=project.id, user_id=int(user_id_raw), role=role)
         db.session.add(membership)
+        audit_message = f"Membership created for user #{user_id_raw} as {role.value}"
     else:
+        previous_role = membership.role.value
         membership.role = role
+        audit_message = f"Membership role updated for user #{user_id_raw}: {previous_role} -> {role.value}"
+
+    log_audit(
+        action="project.membership_upsert",
+        resource_type="project",
+        resource_id=project.id,
+        details=audit_message,
+    )
 
     db.session.commit()
     flash("Project membership updated.", "success")
@@ -191,6 +224,12 @@ def remove_member(project_id, user_id):
 
     membership = ProjectMembership.query.filter_by(project_id=project.id, user_id=user_id).first()
     if membership:
+        log_audit(
+            action="project.membership_removed",
+            resource_type="project",
+            resource_id=project.id,
+            details=f"Removed member user #{user_id}",
+        )
         db.session.delete(membership)
         db.session.commit()
         flash("Project member removed.", "info")
@@ -233,6 +272,12 @@ def edit(project_id):
         project.name = name
         project.description = description
         project.status = status
+        log_audit(
+            action="project.updated",
+            resource_type="project",
+            resource_id=project.id,
+            details=f"Updated project fields; status={project.status.value}",
+        )
         db.session.commit()
 
         flash("Project updated successfully.", "success")
@@ -252,6 +297,12 @@ def delete(project_id):
     _require_project_manager()
     project = Project.query.get_or_404(project_id)
 
+    log_audit(
+        action="project.deleted",
+        resource_type="project",
+        resource_id=project.id,
+        details=f"Deleted project: {project.name}",
+    )
     db.session.delete(project)
     db.session.commit()
     flash("Project deleted.", "info")
@@ -266,4 +317,67 @@ def _can_manage_projects():
 
 def _require_project_manager():
     if not _can_manage_projects():
+        abort(403)
+
+
+def _accessible_projects_query(required_role):
+    if current_user.role.value in {"admin", "owner"}:
+        return Project.query
+
+    role_rank = {
+        ProjectMembershipRole.VIEWER: 1,
+        ProjectMembershipRole.MEMBER: 2,
+        ProjectMembershipRole.MANAGER: 3,
+        ProjectMembershipRole.ADMIN: 4,
+    }
+
+    memberships = ProjectMembership.query.filter_by(user_id=current_user.id).all()
+    eligible_ids = [
+        membership.project_id
+        for membership in memberships
+        if role_rank[membership.role] >= role_rank[required_role]
+    ]
+
+    if eligible_ids:
+        return Project.query.filter(Project.id.in_(eligible_ids))
+
+    no_membership_ids = [
+        project_id
+        for project_id, member_count in db.session.query(
+            Project.id,
+            func.count(ProjectMembership.id),
+        )
+        .outerjoin(ProjectMembership, ProjectMembership.project_id == Project.id)
+        .group_by(Project.id)
+        .all()
+        if member_count == 0
+    ]
+    if no_membership_ids:
+        return Project.query.filter(Project.id.in_(no_membership_ids))
+
+    return Project.query.filter(Project.id == -1)
+
+
+def _user_has_project_role(project_id, required_role):
+    if current_user.role.value in {"admin", "owner"}:
+        return True
+
+    membership = ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first()
+    has_memberships = ProjectMembership.query.filter_by(project_id=project_id).count() > 0
+    if not has_memberships:
+        return True
+    if not membership:
+        return False
+
+    role_rank = {
+        ProjectMembershipRole.VIEWER: 1,
+        ProjectMembershipRole.MEMBER: 2,
+        ProjectMembershipRole.MANAGER: 3,
+        ProjectMembershipRole.ADMIN: 4,
+    }
+    return role_rank[membership.role] >= role_rank[required_role]
+
+
+def _require_project_role(project_id, required_role):
+    if not _user_has_project_role(project_id, required_role):
         abort(403)

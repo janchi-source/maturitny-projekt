@@ -10,9 +10,11 @@
     </div>
     <div class="flex flex-wrap gap-2">
         <a href="{{ url_for('documents.download', document_id=document.id) }}" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">Download</a>
+        <a href="{{ url_for('documents.revisions', document_id=document.id) }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Revision History</a>
         <a href="/ai-chat/" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Open AI Chat</a>
         <form method="post" action="{{ url_for('documents.delete', document_id=document.id) }}" onsubmit="return confirm('Delete this document?');">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="lock_version" value="{{ document.lock_version }}">
             <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500">Delete</button>
         </form>
     </div>
@@ -24,6 +26,9 @@
         <p class="text-sm"><span class="font-bold">File type:</span> {{ document.file_type.value|upper }}</p>
         <p class="text-sm"><span class="font-bold">File size:</span> {{ document.file_size }} bytes</p>
         <p class="text-sm"><span class="font-bold">Version:</span> {{ document.version }}</p>
+        {% if revisions %}
+            <p class="text-sm"><span class="font-bold">Latest hash:</span> {{ revisions[0].file_hash[:12] }}...</p>
+        {% endif %}
         <p class="text-sm"><span class="font-bold">Project:</span> {{ document.project.name if document.project else 'Unknown' }}</p>
         <p class="text-sm"><span class="font-bold">Uploader:</span> {{ document.uploader.username if document.uploader else 'Unknown' }}</p>
         <p class="text-sm"><span class="font-bold">Uploaded:</span> {{ document.created_at.strftime('%Y-%m-%d %H:%M') }}</p>

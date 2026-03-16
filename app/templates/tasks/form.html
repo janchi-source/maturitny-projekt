@@ -39,7 +39,26 @@
 
             <div>
                 <label for="labels" class="block text-sm font-semibold mb-1">Labels (comma-separated)</label>
-                <input id="labels" name="labels" type="text" value="{{ task.labels|map(attribute='name')|join(', ') if task else '' }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" placeholder="urgent, litigation, review">
+                <div class="space-y-3" data-task-label-editor>
+                    <input id="labels" name="labels" data-label-hidden-input type="hidden" value="{{ task.labels|map(attribute='name')|join(', ') if task else '' }}">
+                    <div data-label-chip-list class="flex flex-wrap gap-2"></div>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <input data-label-entry type="text" list="task-form-label-suggestions" class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" placeholder="Type label and press Enter">
+                        <button data-label-add type="button" class="px-4 py-2.5 rounded-lg border border-slate-200 dark:border-border-dark text-sm font-semibold">Add Label</button>
+                    </div>
+                    <datalist id="task-form-label-suggestions">
+                        {% for label in labels %}
+                            <option value="{{ label.name }}"></option>
+                        {% endfor %}
+                    </datalist>
+                    {% if labels %}
+                        <div class="flex flex-wrap gap-2">
+                            {% for label in labels[:12] %}
+                                <button type="button" data-label-suggest="{{ label.name }}" class="px-2 py-1 rounded bg-slate-100 dark:bg-border-dark text-xs font-semibold hover:bg-slate-200 dark:hover:bg-border-dark/70">{{ label.name }}</button>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -62,6 +81,16 @@
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+
+            <div>
+                <label for="parent_task_id" class="block text-sm font-semibold mb-1">Parent Task (optional)</label>
+                <select id="parent_task_id" name="parent_task_id" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                    <option value="">No parent (top-level task)</option>
+                    {% for candidate in parent_candidates %}
+                        <option value="{{ candidate.id }}" {% if task and task.parent_task_id == candidate.id %}selected{% endif %}>#{{ candidate.id }} {{ candidate.title }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -91,6 +120,11 @@
                 </div>
 
                 <div>
+                    <label for="story_points" class="block text-sm font-semibold mb-1">Story Points</label>
+                    <input id="story_points" name="story_points" type="number" min="0" value="{{ task.story_points if task else 0 }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
+                </div>
+
+                <div>
                     <label for="progress" class="block text-sm font-semibold mb-1">Progress (%)</label>
                     <input id="progress" name="progress" type="number" min="0" max="100" value="{{ task.progress if task else 0 }}" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary">
                 </div>
@@ -111,4 +145,8 @@
     </section>
 
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/task_labels.js') }}"></script>
 {% endblock %}

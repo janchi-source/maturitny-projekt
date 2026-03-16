@@ -10,6 +10,39 @@ function initKanban() {
     const cards = board.querySelectorAll("[data-task-card]");
     const columns = board.querySelectorAll("[data-kanban-column]");
 
+    const moveCardToStatus = (card, status) => {
+        if (!card || !status) {
+            return;
+        }
+        const targetList = board.querySelector(`[data-kanban-column][data-status='${status}'] [data-kanban-list]`);
+        if (targetList && card.parentElement !== targetList) {
+            targetList.appendChild(card);
+        }
+        card.setAttribute("data-task-status", status);
+    };
+
+    const applyParentUpdates = (updates) => {
+        if (!Array.isArray(updates)) {
+            return;
+        }
+
+        updates.forEach((update) => {
+            const parentCard = board.querySelector(`[data-task-card][data-task-id='${update.id}']`);
+            if (!parentCard) {
+                return;
+            }
+
+            if (update.status) {
+                moveCardToStatus(parentCard, update.status);
+            }
+
+            const rollupBadge = parentCard.querySelector("[data-rollup-badge]");
+            if (rollupBadge && Number.isFinite(update.subtask_done) && Number.isFinite(update.subtask_total)) {
+                rollupBadge.textContent = `Rollup ${update.subtask_done}/${update.subtask_total}`;
+            }
+        });
+    };
+
     cards.forEach((card) => {
         const editToggle = card.querySelector("[data-task-edit-toggle]");
         const cancelButton = card.querySelector("[data-task-edit-cancel]");
@@ -99,11 +132,9 @@ function initKanban() {
                         dueNode.textContent = payload.due_date || "No due date";
                     }
 
-                    const nextStatus = payload.status;
-                    const targetColumn = board.querySelector(`[data-kanban-column][data-status='${nextStatus}'] [data-kanban-list]`);
-                    if (targetColumn && card.parentElement !== targetColumn) {
-                        targetColumn.appendChild(card);
-                    }
+                    const nextStatus = result.status || payload.status;
+                    moveCardToStatus(card, nextStatus);
+                    applyParentUpdates(result.parent_updates);
 
                     quickForm.classList.add("hidden");
                     card.setAttribute("draggable", "true");
@@ -160,9 +191,13 @@ function initKanban() {
                     body: JSON.stringify({ status: nextStatus }),
                 });
 
-                if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                if (!response.ok || !result.success) {
                     throw new Error("Status update failed");
                 }
+
+                moveCardToStatus(draggedCard, result.status || nextStatus);
+                applyParentUpdates(result.parent_updates);
             } catch (error) {
                 if (previousParent) {
                     previousParent.appendChild(draggedCard);

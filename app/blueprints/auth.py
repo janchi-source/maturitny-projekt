@@ -2,6 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from ..cache_helpers import warm_cache_for_user
 from ..extensions import db, login_manager
 from ..models.user import User, UserRole
 
@@ -27,8 +28,9 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password_hash, password):
             login_user(user, remember=remember_me)
+            warm_cache_for_user(user.id)
             flash("Successfully signed in.", "success")
-            return redirect(url_for("dashboard.index"))
+            return redirect(url_for("dashboard.index", _prefetch="1"))
 
         flash("Invalid email or password.", "error")
 
@@ -79,8 +81,9 @@ def register():
         db.session.commit()
 
         login_user(user)
+        warm_cache_for_user(user.id)
         flash("Account created successfully.", "success")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("dashboard.index", _prefetch="1"))
 
     return render_template("auth/register.html", role_values=[role.value for role in UserRole])
 

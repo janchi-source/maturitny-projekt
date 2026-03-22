@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.orm import subqueryload
 
 from ..blueprints import role_required
 from ..extensions import db
@@ -12,7 +13,14 @@ team_bp = Blueprint("team", __name__)
 @team_bp.route("/")
 @login_required
 def index():
-    users = User.query.order_by(User.username.asc()).all()
+    users = (
+        User.query.options(
+            subqueryload(User.owned_projects),
+            subqueryload(User.assigned_tasks),
+        )
+        .order_by(User.username.asc())
+        .all()
+    )
     member_stats = []
     for user in users:
         member_stats.append(

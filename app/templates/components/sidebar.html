@@ -45,7 +45,7 @@
                 <span class="material-symbols-outlined">group</span>
                 <p class="text-sm font-medium">Team</p>
             </a>
-            <a href="#" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <a href="/settings/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint.startswith('settings.') %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
                 <span class="material-symbols-outlined">settings</span>
                 <p class="text-sm font-medium">Settings</p>
             </a>

@@ -13,13 +13,38 @@
         <div class="relative">
             <button type="button" class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg relative transition-colors" data-notification-toggle>
                 <span class="material-symbols-outlined">notifications</span>
+                {% if header_unread_count > 0 %}
                 <span class="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white dark:border-surface-dark"></span>
+                {% endif %}
             </button>
-            <div class="hidden absolute right-0 mt-2 w-64 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-lg shadow-lg" data-notification-menu>
-                <div class="p-3 border-b border-slate-200 dark:border-border-dark text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</div>
-                <div class="p-3 text-sm text-slate-600 dark:text-slate-300">No new notifications</div>
+            <div class="hidden absolute right-0 mt-2 w-72 bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-xl shadow-lg z-50" data-notification-menu>
+                <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-border-dark">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Notifications</span>
+                    {% if header_unread_count > 0 %}
+                    <span class="text-xs font-bold text-primary">{{ header_unread_count }} unread</span>
+                    {% endif %}
+                </div>
+                {% if header_notifications %}
+                    <ul class="divide-y divide-slate-100 dark:divide-border-dark max-h-72 overflow-y-auto">
+                        {% for n in header_notifications %}
+                        <li class="px-4 py-3 hover:bg-slate-50 dark:hover:bg-border-dark/40 transition-colors">
+                            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug">{{ n.title }}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{{ n.message }}</p>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="px-4 py-2.5 border-t border-slate-100 dark:border-border-dark">
+                        <a href="{{ url_for('tasks.notifications') }}" class="text-xs font-bold text-primary hover:underline">View all notifications</a>
+                    </div>
+                {% else %}
+                    <div class="px-4 py-5 text-sm text-slate-500 dark:text-slate-400 text-center">No new notifications</div>
+                {% endif %}
             </div>
         </div>
+        <button type="button" data-theme-toggle class="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="Toggle theme">
+            <span class="material-symbols-outlined theme-icon-dark hidden dark:block">light_mode</span>
+            <span class="material-symbols-outlined theme-icon-light block dark:hidden">dark_mode</span>
+        </button>
         <div class="h-8 w-[1px] bg-slate-200 dark:bg-border-dark hidden sm:block"></div>
         <div class="flex items-center gap-3">
             <div class="text-right hidden sm:block">

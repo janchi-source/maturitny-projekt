@@ -6,7 +6,7 @@
 <div class="flex flex-wrap justify-between items-end gap-4 mb-8">
     <div>
         <h2 class="text-3xl font-black tracking-tight">Sprint Planning</h2>
-        <p class="text-slate-500 dark:text-slate-400 font-medium">Backlog grooming, sprint creation, and status updates</p>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Drag tasks from the backlog into a sprint to assign them</p>
     </div>
     <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold">Back to Tasks</a>
 </div>
@@ -37,44 +37,157 @@
     </form>
 </section>
 
+{# Hidden CSRF token for JS fetch calls #}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+
 <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
-        <h3 class="text-lg font-bold mb-4">Sprints</h3>
-        <div class="space-y-3">
-            {% for sprint in sprints %}
-                <div class="border border-slate-200 dark:border-border-dark rounded-lg p-3">
+    {# Sprints column #}
+    <div class="space-y-4">
+        <h3 class="text-lg font-bold">Sprints</h3>
+        {% for sprint in sprints %}
+            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-4"
+                 id="sprint-{{ sprint.id }}"
+                 data-sprint-id="{{ sprint.id }}"
+                 data-drop-zone="sprint">
+                <div class="flex items-start justify-between mb-1">
                     <p class="font-bold">{{ sprint.name }}</p>
-                    <p class="text-xs text-slate-500 mt-1">{{ sprint.status.value|title }} • {{ sprint.start_date or '-' }} → {{ sprint.end_date or '-' }}</p>
-                    {% if sprint.goal %}<p class="text-sm mt-2">{{ sprint.goal }}</p>{% endif %}
-                    <form method="post" action="{{ url_for('tasks.update_sprint_status', sprint_id=sprint.id) }}" class="mt-3 flex gap-2">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <select name="status" class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-xs">
-                            {% for value in sprint_status_values %}
-                                <option value="{{ value }}" {% if sprint.status.value == value %}selected{% endif %}>{{ value|title }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit" class="px-3 py-2 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-xs font-bold">Update</button>
-                    </form>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold
+                        {% if sprint.status.value == 'active' %}bg-emerald-500/15 text-emerald-400
+                        {% elif sprint.status.value == 'closed' %}bg-slate-500/15 text-slate-400
+                        {% else %}bg-primary/15 text-primary{% endif %}">
+                        {{ sprint.status.value|title }}
+                    </span>
                 </div>
-            {% else %}
-                <p class="text-sm text-slate-500">No sprints yet.</p>
-            {% endfor %}
-        </div>
+                <p class="text-xs text-slate-500 mb-1">{{ sprint.start_date or '–' }} → {{ sprint.end_date or '–' }}</p>
+                {% if sprint.goal %}<p class="text-sm text-slate-400 mb-3">{{ sprint.goal }}</p>{% endif %}
+
+                {# Tasks in this sprint #}
+                <div class="sprint-task-list min-h-[3rem] rounded-lg border border-dashed border-slate-300 dark:border-border-dark p-2 space-y-1.5 mb-3 transition-colors"
+                     data-sprint-id="{{ sprint.id }}">
+                    {% for task in sprint.tasks %}
+                        <div class="task-card flex items-center justify-between gap-2 bg-slate-50 dark:bg-border-dark rounded-lg px-3 py-2 cursor-grab select-none"
+                             draggable="true"
+                             data-task-id="{{ task.id }}"
+                             data-task-title="{{ task.title }}">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold truncate">{{ task.title }}</p>
+                                <p class="text-xs text-slate-500">{{ task.status.value|replace('_',' ')|title }}{% if task.assignee %} · {{ task.assignee.username }}{% endif %}</p>
+                            </div>
+                            <span class="material-symbols-outlined text-slate-400 text-base shrink-0">drag_indicator</span>
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 text-center py-2 drop-placeholder">Drop tasks here</p>
+                    {% endfor %}
+                </div>
+
+                <form method="post" action="{{ url_for('tasks.update_sprint_status', sprint_id=sprint.id) }}" class="flex gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="status" class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-xs">
+                        {% for value in sprint_status_values %}
+                            <option value="{{ value }}" {% if sprint.status.value == value %}selected{% endif %}>{{ value|title }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="px-3 py-2 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-xs font-bold">Update</button>
+                </form>
+            </div>
+        {% else %}
+            <p class="text-sm text-slate-500">No sprints yet. Create one above.</p>
+        {% endfor %}
     </div>
 
-    <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
-        <h3 class="text-lg font-bold mb-4">Backlog (No Sprint)</h3>
-        <div class="space-y-2">
-            {% for task in backlog_tasks %}
-                <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="block border border-slate-200 dark:border-border-dark rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-border-dark/30">
-                    <p class="font-semibold text-sm">{{ task.title }}</p>
-                    <p class="text-xs text-slate-500 mt-1">{{ task.status.value|replace('_', ' ')|title }} • {{ task.priority.value|title }}</p>
-                </a>
-            {% else %}
-                <p class="text-sm text-slate-500">No backlog tasks.</p>
-            {% endfor %}
+    {# Backlog column #}
+    <div>
+        <h3 class="text-lg font-bold mb-4">Backlog <span class="text-slate-400 font-normal text-base">({{ backlog_tasks|length }})</span></h3>
+        <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-4">
+            <div class="sprint-task-list min-h-[4rem] rounded-lg border border-dashed border-slate-300 dark:border-border-dark p-2 space-y-1.5"
+                 data-sprint-id="backlog">
+                {% for task in backlog_tasks %}
+                    <div class="task-card flex items-center justify-between gap-2 bg-slate-50 dark:bg-border-dark rounded-lg px-3 py-2 cursor-grab select-none"
+                         draggable="true"
+                         data-task-id="{{ task.id }}"
+                         data-task-title="{{ task.title }}">
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold truncate">{{ task.title }}</p>
+                            <p class="text-xs text-slate-500">{{ task.status.value|replace('_',' ')|title }} · {{ task.priority.value|title }}</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-400 text-base shrink-0">drag_indicator</span>
+                    </div>
+                {% else %}
+                    <p class="text-xs text-slate-400 text-center py-2">All tasks are assigned to sprints.</p>
+                {% endfor %}
+            </div>
         </div>
     </div>
 </section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if selected_project %}
+<script>
+(function () {
+    "use strict";
+
+    var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    var draggingCard = null;
+
+    document.querySelectorAll(".task-card").forEach(function (card) {
+        card.addEventListener("dragstart", function (e) {
+            draggingCard = card;
+            card.classList.add("opacity-50");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", card.dataset.taskId);
+        });
+        card.addEventListener("dragend", function () {
+            card.classList.remove("opacity-50");
+            draggingCard = null;
+        });
+    });
+
+    document.querySelectorAll(".sprint-task-list").forEach(function (zone) {
+        zone.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            zone.classList.add("bg-primary/10");
+        });
+        zone.addEventListener("dragleave", function () {
+            zone.classList.remove("bg-primary/10");
+        });
+        zone.addEventListener("drop", function (e) {
+            e.preventDefault();
+            zone.classList.remove("bg-primary/10");
+
+            var taskId = e.dataTransfer.getData("text/plain");
+            var targetSprintId = zone.dataset.sprintId;
+
+            if (!taskId || !draggingCard) return;
+
+            var body = new URLSearchParams();
+            body.append("csrf_token", csrfToken);
+            if (targetSprintId !== "backlog") {
+                body.append("sprint_id", targetSprintId);
+            }
+
+            fetch("/tasks/" + taskId + "/sprint", {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {"Content-Type": "application/x-www-form-urlencoded"},
+                body: body.toString()
+            }).then(function (res) {
+                if (res.ok || res.redirected) {
+                    // Move the card in the DOM
+                    var placeholder = zone.querySelector(".drop-placeholder");
+                    if (placeholder) placeholder.remove();
+                    zone.appendChild(draggingCard);
+                } else {
+                    alert("Failed to update sprint assignment.");
+                }
+            }).catch(function () {
+                alert("Network error. Please try again.");
+            });
+        });
+    });
+})();
+</script>
 {% endif %}
 {% endblock %}

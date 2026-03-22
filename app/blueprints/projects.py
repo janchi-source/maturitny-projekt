@@ -1,9 +1,13 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.orm import joinedload, subqueryload
 
+from ..cache_helpers import get_users_dropdown
 from ..extensions import db
+from ..models.document import Document
 from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher
 from ..models.project import Project, ProjectStatus
+from ..models.task import Task
 from ..models.user import User
 from ..models.user import UserRole
 
@@ -92,7 +96,17 @@ def create():
 @projects_bp.route("/<int:project_id>")
 @login_required
 def detail(project_id):
-    project = Project.query.get_or_404(project_id)
+    project = (
+        Project.query.options(
+            subqueryload(Project.tasks).joinedload(Task.assignee),
+            subqueryload(Project.documents).joinedload(Document.uploader),
+            subqueryload(Project.memberships).joinedload(ProjectMembership.user),
+            subqueryload(Project.watchers).joinedload(ProjectWatcher.user),
+            subqueryload(Project.automation_rules),
+            joinedload(Project.owner),
+        )
+        .get_or_404(project_id)
+    )
     active_tab = request.args.get("tab", "tasks").strip().lower()
     if active_tab not in {"tasks", "documents", "team"}:
         active_tab = "tasks"
@@ -125,7 +139,7 @@ def detail(project_id):
         tasks=sorted(project.tasks, key=lambda task: task.created_at, reverse=True),
         documents=sorted(project.documents, key=lambda document: document.created_at, reverse=True),
         team_members=team_members,
-        users_for_membership=User.query.order_by(User.username.asc()).all(),
+        users_for_membership=get_users_dropdown(),
         membership_map=membership_map,
         membership_roles=[role.value for role in ProjectMembershipRole],
         watchers=watchers,

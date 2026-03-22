@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings | ProMat{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Settings</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Manage your account preferences</p>
+    </div>
+
+    <!-- Profile Section -->
+    <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+        <h3 class="text-lg font-bold mb-4">Profile</h3>
+        <form method="post" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="profile">
+
+            <div>
+                <label for="username" class="block text-sm font-semibold mb-1">Username</label>
+                <input type="text" id="username" name="username" value="{{ current_user.username }}" required
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none">
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-semibold mb-1">Email</label>
+                <input type="email" id="email" name="email" value="{{ current_user.email }}" required
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold mb-1">Role</label>
+                <input type="text" value="{{ current_user.role.value | replace('_', ' ') | title }}" disabled
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm opacity-60">
+            </div>
+
+            <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
+                Save Profile
+            </button>
+        </form>
+    </section>
+
+    <!-- Password Section -->
+    <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+        <h3 class="text-lg font-bold mb-4">Change Password</h3>
+        <form method="post" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="password">
+
+            <div>
+                <label for="current_password" class="block text-sm font-semibold mb-1">Current Password</label>
+                <input type="password" id="current_password" name="current_password" required
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none">
+            </div>
+
+            <div>
+                <label for="new_password" class="block text-sm font-semibold mb-1">New Password</label>
+                <input type="password" id="new_password" name="new_password" required minlength="8"
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none">
+            </div>
+
+            <div>
+                <label for="confirm_password" class="block text-sm font-semibold mb-1">Confirm New Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" required minlength="8"
+                    class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary focus:outline-none">
+            </div>
+
+            <button type="submit" class="px-5 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors">
+                Change Password
+            </button>
+        </form>
+    </section>
+
+    <!-- Account Info -->
+    <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 sm:p-6">
+        <h3 class="text-lg font-bold mb-4">Account Info</h3>
+        <dl class="space-y-3 text-sm">
+            <div class="flex justify-between">
+                <dt class="text-slate-500 dark:text-slate-400 font-medium">Member since</dt>
+                <dd class="font-semibold">{{ current_user.created_at.strftime('%B %d, %Y') }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-slate-500 dark:text-slate-400 font-medium">User ID</dt>
+                <dd class="font-semibold">#{{ current_user.id }}</dd>
+            </div>
+        </dl>
+    </section>
+</div>
+{% endblock %}

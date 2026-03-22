@@ -7,3 +7,5 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))
+    CACHE_TYPE = "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 300

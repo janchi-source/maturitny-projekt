@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, render_template
 from flask_login import login_required
+from sqlalchemy.orm import joinedload, subqueryload
 
 from ..models.document import Document
 from ..models.project import Project, ProjectStatus
@@ -55,6 +56,7 @@ def index():
 
     projects = (
         Project.query.filter(Project.status == ProjectStatus.ACTIVE)
+        .options(subqueryload(Project.tasks).joinedload(Task.assignee))
         .order_by(Project.updated_at.desc())
         .limit(3)
         .all()
@@ -97,8 +99,18 @@ def index():
             }
         )
 
-    recent_tasks = Task.query.order_by(Task.created_at.desc()).limit(3).all()
-    recent_documents = Document.query.order_by(Document.created_at.desc()).limit(3).all()
+    recent_tasks = (
+        Task.query.options(joinedload(Task.assignee))
+        .order_by(Task.created_at.desc())
+        .limit(3)
+        .all()
+    )
+    recent_documents = (
+        Document.query.options(joinedload(Document.uploader))
+        .order_by(Document.created_at.desc())
+        .limit(3)
+        .all()
+    )
 
     return render_template(
         "dashboard/index.html",

@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
+from sqlalchemy.orm import defer
+
 from ..extensions import db
 from ..models.ai_chat import ChatMessage, ChatMessageRole, ChatSession
 from ..models.document import Document
@@ -21,7 +23,7 @@ def index():
     )
     selected_session = sessions[0] if sessions else None
     messages = selected_session.messages if selected_session else []
-    documents = Document.query.order_by(Document.created_at.desc()).all()
+    documents = Document.query.options(defer(Document.extracted_text)).order_by(Document.created_at.desc()).all()
 
     return render_template(
         "ai_chat/index.html",
@@ -55,7 +57,7 @@ def get_session(session_id):
         .order_by(ChatSession.created_at.desc())
         .all()
     )
-    documents = Document.query.order_by(Document.created_at.desc()).all()
+    documents = Document.query.options(defer(Document.extracted_text)).order_by(Document.created_at.desc()).all()
 
     return render_template(
         "ai_chat/index.html",

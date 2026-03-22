@@ -38,6 +38,7 @@ from ..models.planning import (
     TaskSavedFilter,
     TaskWatcher,
 )
+from ..cache_helpers import get_labels_dropdown, get_projects_dropdown, get_users_dropdown
 from ..models.project import Project
 from ..models.task import Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
 from ..models.user import User
@@ -87,9 +88,9 @@ def index():
     return render_template(
         "tasks/list.html",
         tasks=tasks,
-        projects=Project.query.order_by(Project.name.asc()).all(),
-        users=User.query.order_by(User.username.asc()).all(),
-        labels=TaskLabel.query.order_by(TaskLabel.name.asc()).all(),
+        projects=get_projects_dropdown(),
+        users=get_users_dropdown(),
+        labels=get_labels_dropdown(),
         saved_filters=TaskSavedFilter.query.filter_by(user_id=current_user.id).order_by(TaskSavedFilter.created_at.desc()).all(),
         project_filter=project_filter,
         status_filter=status_filter,
@@ -171,9 +172,9 @@ def kanban():
         wip_limits=wip_limits,
         swimlane_mode=swimlane_mode,
         active_project=active_project,
-        projects=Project.query.order_by(Project.name.asc()).all(),
+        projects=get_projects_dropdown(),
         TaskStatus=TaskStatus,
-        users=User.query.order_by(User.username.asc()).all(),
+        users=get_users_dropdown(),
         priority_values=[priority.value for priority in TaskPriority],
         status_values=[status.value for status in TaskStatus],
     )
@@ -248,8 +249,8 @@ def delete_filter(filter_id):
 @tasks_bp.route("/new", methods=["GET", "POST"])
 @login_required
 def create():
-    projects = Project.query.order_by(Project.name.asc()).all()
-    users = User.query.order_by(User.username.asc()).all()
+    projects = get_projects_dropdown()
+    users = get_users_dropdown()
 
     if request.method == "POST":
         title = request.form.get("title", "").strip()
@@ -374,9 +375,9 @@ def detail(task_id):
     return render_template(
         "tasks/detail.html",
         task=task,
-        projects=Project.query.order_by(Project.name.asc()).all(),
-        users=User.query.order_by(User.username.asc()).all(),
-        labels=TaskLabel.query.order_by(TaskLabel.name.asc()).all(),
+        projects=get_projects_dropdown(),
+        users=get_users_dropdown(),
+        labels=get_labels_dropdown(),
         available_dependencies=available_dependencies,
         sprints=Sprint.query.filter_by(project_id=task.project_id).order_by(Sprint.created_at.desc()).all(),
         priority_values=[priority.value for priority in TaskPriority],
@@ -411,8 +412,8 @@ def edit(task_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
 
-    projects = Project.query.order_by(Project.name.asc()).all()
-    users = User.query.order_by(User.username.asc()).all()
+    projects = get_projects_dropdown()
+    users = get_users_dropdown()
 
     if request.method == "POST":
         updates = {
@@ -929,7 +930,7 @@ def assign_sprint(task_id):
 @tasks_bp.route("/sprints", methods=["GET", "POST"])
 @login_required
 def sprints():
-    projects = Project.query.order_by(Project.name.asc()).all()
+    projects = get_projects_dropdown()
     project_filter = request.args.get("project", "").strip()
 
     selected_project = Project.query.get(int(project_filter)) if project_filter.isdigit() else None
@@ -961,7 +962,10 @@ def sprints():
         flash("Sprint created.", "success")
         return redirect(url_for("tasks.sprints", project=project.id))
 
-    sprint_query = Sprint.query.options(joinedload(Sprint.project)).order_by(Sprint.created_at.desc())
+    sprint_query = Sprint.query.options(
+        joinedload(Sprint.project),
+        joinedload(Sprint.tasks).joinedload(Task.assignee),
+    ).order_by(Sprint.created_at.desc())
     if selected_project:
         sprint_query = sprint_query.filter(Sprint.project_id == selected_project.id)
 

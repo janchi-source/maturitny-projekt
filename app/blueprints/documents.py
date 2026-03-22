@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import current_user, login_required
 
+from ..cache_helpers import get_projects_dropdown
 from ..extensions import db
 from ..models.document import Document, DocumentType
 from ..models.project import Project
@@ -40,7 +41,7 @@ def index():
     return render_template(
         "documents/list.html",
         documents=documents,
-        projects=Project.query.order_by(Project.name.asc()).all(),
+        projects=get_projects_dropdown(),
         project_filter=project_filter,
         file_type_filter=file_type_filter,
         tag_filter=tag_filter,
@@ -52,7 +53,7 @@ def index():
 @documents_bp.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    projects = Project.query.order_by(Project.name.asc()).all()
+    projects = get_projects_dropdown()
 
     if request.method == "POST":
         file = request.files.get("file")

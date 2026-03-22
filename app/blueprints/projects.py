@@ -7,7 +7,7 @@ from ..extensions import db
 from ..models.document import Document
 from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher
 from ..models.project import Project, ProjectStatus
-from ..models.task import Task
+from ..models.task import Task, TaskPriority, TaskStatus
 from ..models.user import User
 from ..models.user import UserRole
 
@@ -146,6 +146,9 @@ def detail(project_id):
         is_watching=is_watching,
         automation_rules=sorted(project.automation_rules, key=lambda rule: rule.created_at, reverse=True),
         can_manage=_can_manage_projects(),
+        users=get_users_dropdown(),
+        priority_values=[p.value for p in TaskPriority],
+        status_values=[s.value for s in TaskStatus],
     )
 
 

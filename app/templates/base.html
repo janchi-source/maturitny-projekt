@@ -40,7 +40,7 @@
     {% if messages %}
         <div class="fixed top-4 right-4 z-[80] flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm">
             {% for category, message in messages %}
-                <div class="rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm text-sm font-medium {% if category == 'success' %}bg-emerald-500/15 border-emerald-500/40 text-emerald-200{% elif category == 'error' %}bg-red-500/15 border-red-500/40 text-red-200{% elif category == 'info' %}bg-primary/15 border-primary/40 text-blue-100{% else %}bg-slate-500/15 border-slate-400/40 text-slate-100{% endif %}">
+                <div class="rounded-lg border px-4 py-3 shadow-lg backdrop-blur-sm text-sm font-medium {% if category == 'success' %}bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-200{% elif category == 'error' %}bg-red-500/15 border-red-500/40 text-red-700 dark:text-red-200{% elif category == 'info' %}bg-primary/15 border-primary/40 text-blue-700 dark:text-blue-100{% else %}bg-slate-500/15 border-slate-400/40 text-slate-700 dark:text-slate-100{% endif %}">
                     {{ message }}
                 </div>
             {% endfor %}

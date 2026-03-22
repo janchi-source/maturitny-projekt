@@ -123,10 +123,10 @@
                     {% set status_label = 'Pending' %}
                     {% set badge = 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500' %}
                 {% endif %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors">
+                <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-border-dark/20 transition-colors" onclick="if(event.target.type!=='checkbox')window.location='{{ url_for('tasks.detail', task_id=task.id, next=url_for('tasks.index')) }}'">
                     <td class="px-4 py-4"><input type="checkbox" name="task_ids" value="{{ task.id }}" class="bulk-task-checkbox"></td>
                     <td class="px-6 py-4">
-                        <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="font-semibold hover:text-primary">{{ task.title }}</a>
+                        <span class="font-semibold">{{ task.title }}</span>
                         {% if task.labels %}
                             <div class="mt-2 flex flex-wrap gap-1">
                                 {% for label in task.labels %}

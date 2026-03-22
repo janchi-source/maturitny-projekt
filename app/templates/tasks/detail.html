@@ -25,7 +25,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">{% if is_watching %}Unwatch{% else %}Watch{% endif %}</button>
         </form>
-        <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Back to Tasks</a>
+        <a href="{{ next_url if next_url else url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Back</a>
         <a href="{{ url_for('tasks.kanban') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Kanban</a>
     </div>
 </div>

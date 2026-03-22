@@ -7,13 +7,17 @@ body {
 }
 
 .sidebar-item-active {
-    background-color: #293038;
+    background-color: #eff6ff;
     border-right: 3px solid #197fe6;
+}
+
+.dark .sidebar-item-active {
+    background-color: #293038;
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: #293038 #111921;
+    scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
 *::-webkit-scrollbar {
@@ -22,10 +26,24 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-    background: #111921;
+    background: #f1f5f9;
 }
 
 *::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+    border: 2px solid #f1f5f9;
+}
+
+.dark * {
+    scrollbar-color: #293038 #111921;
+}
+
+.dark *::-webkit-scrollbar-track {
+    background: #111921;
+}
+
+.dark *::-webkit-scrollbar-thumb {
     background-color: #293038;
     border-radius: 9999px;
     border: 2px solid #111921;

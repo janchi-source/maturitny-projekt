@@ -325,6 +325,9 @@ def create():
 
         db.session.commit()
         flash("Task created successfully.", "success")
+        next_url = request.form.get("next", "").strip()
+        if next_url and next_url.startswith("/"):
+            return redirect(next_url)
         return redirect(url_for("tasks.detail", task_id=task.id))
 
     return render_template(
@@ -372,6 +375,8 @@ def detail(task_id):
 
     current_watching = TaskWatcher.query.filter_by(task_id=task.id, user_id=current_user.id).first() is not None
 
+    next_url = request.args.get("next", "").strip()
+
     return render_template(
         "tasks/detail.html",
         task=task,
@@ -385,6 +390,7 @@ def detail(task_id):
         checklist_done=completion_done,
         checklist_total=completion_total,
         is_watching=current_watching,
+        next_url=next_url,
     )
 
 
@@ -450,6 +456,9 @@ def edit(task_id):
 
         db.session.commit()
         flash("Task updated successfully.", "success")
+        next_url = request.form.get("next", "").strip()
+        if next_url and next_url.startswith("/"):
+            return redirect(next_url)
         return redirect(url_for("tasks.detail", task_id=task.id))
 
     return render_template(
@@ -460,6 +469,7 @@ def edit(task_id):
         users=users,
         priority_values=[priority.value for priority in TaskPriority],
         status_values=[status.value for status in TaskStatus],
+        next_url=request.args.get("next", "").strip(),
     )
 
 

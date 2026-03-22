@@ -42,10 +42,18 @@
 </section>
 
 <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
-    <div class="p-4 border-b border-slate-200 dark:border-border-dark flex flex-wrap gap-2">
-        <a href="{{ url_for('projects.detail', project_id=project.id, tab='tasks') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'tasks' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Tasks</a>
-        <a href="{{ url_for('projects.detail', project_id=project.id, tab='documents') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'documents' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Documents</a>
-        <a href="{{ url_for('projects.detail', project_id=project.id, tab='team') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'team' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Team</a>
+    <div class="p-4 border-b border-slate-200 dark:border-border-dark flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('projects.detail', project_id=project.id, tab='tasks') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'tasks' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Tasks</a>
+            <a href="{{ url_for('projects.detail', project_id=project.id, tab='documents') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'documents' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Documents</a>
+            <a href="{{ url_for('projects.detail', project_id=project.id, tab='team') }}" class="px-3 py-2 text-xs font-bold rounded-lg {% if active_tab == 'team' %}bg-primary text-white{% else %}bg-slate-100 dark:bg-border-dark/50 text-slate-700 dark:text-slate-300{% endif %}">Team</a>
+        </div>
+        {% if active_tab == 'tasks' %}
+            <a href="{{ url_for('tasks.create', project_id=project.id, next=url_for('projects.detail', project_id=project.id, tab='tasks')) }}" class="flex items-center gap-1.5 px-3 py-2 bg-primary text-white text-xs font-bold rounded-lg hover:bg-primary/90 transition-colors">
+                <span class="material-symbols-outlined text-sm">add</span>
+                New Task
+            </a>
+        {% endif %}
     </div>
 
     <div class="p-5">
@@ -62,11 +70,11 @@
                     </thead>
                     <tbody class="divide-y divide-slate-200 dark:divide-border-dark text-sm">
                     {% for task in tasks %}
-                        <tr>
-                            <td class="px-3 py-3">{{ task.title }}</td>
-                            <td class="px-3 py-3">{{ task.assignee.username if task.assignee else 'Unassigned' }}</td>
-                            <td class="px-3 py-3">{{ task.status.value|replace('_', ' ')|title }}</td>
-                            <td class="px-3 py-3 text-right">{{ task.progress }}%</td>
+                        <tr class="cursor-pointer hover:bg-slate-50 dark:hover:bg-border-dark/30 transition-colors" onclick="window.location='{{ url_for('tasks.detail', task_id=task.id, next=url_for('projects.detail', project_id=project.id, tab='tasks')) }}'">
+                            <td class="px-3 py-3 font-medium">{{ task.title }}</td>
+                            <td class="px-3 py-3 text-slate-600 dark:text-slate-400">{{ task.assignee.username if task.assignee else 'Unassigned' }}</td>
+                            <td class="px-3 py-3 text-slate-600 dark:text-slate-400">{{ task.status.value|replace('_', ' ')|title }}</td>
+                            <td class="px-3 py-3 text-right text-slate-600 dark:text-slate-400">{{ task.progress }}%</td>
                         </tr>
                     {% else %}
                         <tr><td class="px-3 py-4 text-slate-500" colspan="4">No tasks for this project.</td></tr>

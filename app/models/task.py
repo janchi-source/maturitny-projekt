@@ -69,6 +69,13 @@ class TaskActivity(db.Model):
     actor = db.relationship("User")
 
 
+class AttachmentStatus(enum.Enum):
+    ACTIVE = "active"
+    PENDING = "pending"
+    REJECTED = "rejected"
+    SUPERSEDED = "superseded"
+
+
 class TaskAttachment(db.Model):
     __tablename__ = "task_attachments"
 
@@ -82,6 +89,11 @@ class TaskAttachment(db.Model):
     version_note = db.Column(db.Text, nullable=True)
     uploaded_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    status = db.Column(
+        db.Enum(AttachmentStatus, name="attachment_status", native_enum=False),
+        nullable=False,
+        default=AttachmentStatus.ACTIVE,
+    )
 
     task = db.relationship("Task", back_populates="attachments")
     uploader = db.relationship("User", back_populates="task_attachments", foreign_keys=[uploaded_by])

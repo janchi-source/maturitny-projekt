@@ -40,7 +40,7 @@ from ..models.planning import (
 )
 from ..cache_helpers import get_labels_dropdown, get_projects_dropdown, get_users_dropdown
 from ..models.project import Project
-from ..models.task import Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
+from ..models.task import AttachmentStatus, Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
 from ..models.user import User
 
 
@@ -764,6 +764,13 @@ def upload_attachment(task_id):
     file.save(absolute_path)
 
     version = TaskAttachment.query.filter_by(task_id=task.id, original_name=original_name).count() + 1
+    existing_active = TaskAttachment.query.filter_by(
+        task_id=task.id,
+        original_name=original_name,
+        status=AttachmentStatus.ACTIVE,
+    ).first()
+    status = AttachmentStatus.PENDING if existing_active else AttachmentStatus.ACTIVE
+
     attachment = TaskAttachment(
         task_id=task.id,
         filename=relative_path.as_posix(),
@@ -773,12 +780,16 @@ def upload_attachment(task_id):
         version=version,
         version_note=version_note or None,
         uploaded_by=current_user.id,
+        status=status,
     )
     db.session.add(attachment)
-    _log_activity(task, "attachment_uploaded", f"{original_name} (v{version})")
+    _log_activity(task, "attachment_uploaded", f"{original_name} (v{version}){' — pending review' if status == AttachmentStatus.PENDING else ''}")
     db.session.commit()
 
-    flash("Attachment uploaded.", "success")
+    if status == AttachmentStatus.PENDING:
+        flash("Attachment uploaded and pending review by a teammate.", "info")
+    else:
+        flash("Attachment uploaded.", "success")
     return redirect(url_for("tasks.detail", task_id=task.id))
 
 
@@ -829,6 +840,61 @@ def delete_attachment(task_id, attachment_id):
     db.session.commit()
 
     flash("Attachment deleted.", "info")
+    return redirect(url_for("tasks.detail", task_id=task.id))
+
+
+@tasks_bp.route("/<int:task_id>/attachments/<int:attachment_id>/approve", methods=["POST"])
+@login_required
+def approve_attachment(task_id, attachment_id):
+    task = Task.query.get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id).first_or_404()
+
+    if attachment.uploaded_by == current_user.id:
+        flash("You cannot approve your own upload.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if attachment.status != AttachmentStatus.PENDING:
+        flash("Only pending attachments can be approved.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    # supersede the current active version for this filename
+    TaskAttachment.query.filter_by(
+        task_id=task.id,
+        original_name=attachment.original_name,
+        status=AttachmentStatus.ACTIVE,
+    ).update({"status": AttachmentStatus.SUPERSEDED})
+
+    attachment.status = AttachmentStatus.ACTIVE
+    _log_activity(task, "attachment_approved", f"{attachment.original_name} (v{attachment.version})")
+    db.session.commit()
+
+    flash("Attachment approved and is now active.", "success")
+    return redirect(url_for("tasks.detail", task_id=task.id))
+
+
+@tasks_bp.route("/<int:task_id>/attachments/<int:attachment_id>/reject", methods=["POST"])
+@login_required
+def reject_attachment(task_id, attachment_id):
+    task = Task.query.get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    attachment = TaskAttachment.query.filter_by(id=attachment_id, task_id=task.id).first_or_404()
+
+    if attachment.uploaded_by == current_user.id:
+        flash("You cannot reject your own upload.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    if attachment.status != AttachmentStatus.PENDING:
+        flash("Only pending attachments can be rejected.", "error")
+        return redirect(url_for("tasks.detail", task_id=task.id))
+
+    attachment.status = AttachmentStatus.REJECTED
+    _log_activity(task, "attachment_rejected", f"{attachment.original_name} (v{attachment.version})")
+    db.session.commit()
+
+    flash("Attachment rejected.", "info")
     return redirect(url_for("tasks.detail", task_id=task.id))
 
 

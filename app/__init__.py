@@ -19,7 +19,13 @@ from .models import init_db
 
 
 def create_app(config_class=Config):
+    import re as _re
+
     app = Flask(__name__)
+
+    @app.template_filter("strip_mentions")
+    def strip_mentions_filter(text):
+        return _re.sub(r'@\[[a-z]+:\d+:([^\]]+)\]', r'@\1', text or "")
     app.config.from_object(config_class)
 
     upload_folder = Path(app.config["UPLOAD_FOLDER"])

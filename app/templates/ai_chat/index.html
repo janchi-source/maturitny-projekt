@@ -1,92 +1,237 @@
 {% extends 'base.html' %}
 
-{% block title %}AI Chat | ProMat{% endblock %}
+{% block title %}AI Chat — ProMat{% endblock %}
 
-{% block content %}
-<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
-    <div>
-        <h2 class="text-3xl font-black tracking-tight">AI Chat</h2>
-        <p class="text-slate-500 dark:text-slate-400 font-medium">Context-aware Q&A over project documents</p>
+{% block main_class %}overflow-hidden{% endblock %}
+
+{% block main_content %}
+<div class="flex flex-1 overflow-hidden h-full">
+
+  {# ── History Sidebar ──────────────────────────────────────────────── #}
+  <aside class="w-60 xl:w-72 flex-shrink-0 border-r border-gray-200 dark:border-border-dark flex flex-col bg-white dark:bg-surface-dark">
+
+    <div class="px-3 py-3 border-b border-gray-200 dark:border-border-dark flex items-center justify-between gap-2">
+      <span class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 pl-1">Conversations</span>
+      <button id="new-chat-btn"
+        title="New conversation"
+        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-primary transition-colors">
+        <span class="material-symbols-outlined text-xl leading-none">edit_square</span>
+      </button>
     </div>
+
+    <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
+      {% for s in sessions %}
+      <div class="flex items-center group rounded-xl
+          {% if selected_session and selected_session.id == s.id %}
+            bg-primary/10
+          {% else %}
+            hover:bg-gray-100 dark:hover:bg-gray-800
+          {% endif %}">
+        <a href="{{ url_for('ai_chat.get_session', session_id=s.id) }}"
+          class="flex items-start gap-2.5 px-3 py-2.5 flex-1 min-w-0 transition-colors
+            {% if selected_session and selected_session.id == s.id %}
+              text-primary
+            {% else %}
+              text-gray-700 dark:text-gray-300
+            {% endif %}">
+          <span class="material-symbols-outlined text-lg flex-shrink-0 mt-0.5
+            {% if selected_session and selected_session.id == s.id %}text-primary{% else %}text-gray-400{% endif %}">
+            chat_bubble_outline
+          </span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate leading-snug">{{ s.title }}</p>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ s.created_at.strftime('%b %-d') }}</p>
+          </div>
+        </a>
+        <form action="{{ url_for('ai_chat.delete_session', session_id=s.id) }}" method="POST" class="pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" title="Delete conversation"
+            class="p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-400 hover:text-red-500 transition-colors"
+            onclick="return confirm('Delete this conversation?')">
+            <span class="material-symbols-outlined text-[16px] leading-none">delete</span>
+          </button>
+        </form>
+      </div>
+      {% else %}
+      <p class="text-sm text-gray-400 dark:text-gray-500 text-center py-10 px-3">No conversations yet.</p>
+      {% endfor %}
+    </div>
+  </aside>
+
+  {# ── Chat Area ────────────────────────────────────────────────────── #}
+  <div class="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-background-dark">
+
+    {% if selected_session %}
+
+    {# Session header #}
+    <div class="px-5 py-3 border-b border-gray-200 dark:border-border-dark flex items-center gap-2.5 flex-shrink-0 bg-white dark:bg-surface-dark">
+      <span class="material-symbols-outlined text-primary text-xl">smart_toy</span>
+      <h1 class="font-semibold text-gray-800 dark:text-gray-200 truncate">{{ selected_session.title }}</h1>
+    </div>
+
+    {# Messages #}
+    <div id="messages" class="flex-1 overflow-y-auto px-4 py-5 space-y-5 sm:px-6">
+      {% for msg in messages %}
+
+        {% if msg.role.value == 'user' %}
+        <div class="flex justify-end">
+          <div class="max-w-[75%]">
+            <div class="bg-primary text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap">{{ msg.content | strip_mentions }}</div>
+            {% if msg.citations %}
+            <div class="flex flex-wrap justify-end gap-1 mt-1.5">
+              {% for c in msg.citations %}
+              <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                <span class="material-symbols-outlined text-[11px]">{% if c.type == 'doc' %}description{% elif c.type == 'project' %}folder{% else %}task_alt{% endif %}</span>
+                {{ c.label }}
+              </span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% else %}
+        <div class="flex gap-3">
+          <div class="w-7 h-7 rounded-full bg-primary/10 flex-shrink-0 flex items-center justify-center mt-0.5">
+            <span class="material-symbols-outlined text-primary text-[15px]">smart_toy</span>
+          </div>
+          <div class="flex-1 min-w-0 max-w-[82%]">
+            <div class="ai-message text-sm text-gray-800 dark:text-gray-200 leading-relaxed" data-raw="{{ msg.content | e }}">{{ msg.content }}</div>
+            {% if msg.citations %}
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              {% for c in msg.citations %}
+              <span class="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">
+                <span class="material-symbols-outlined text-[11px]">{% if c.type == 'doc' %}description{% elif c.type == 'project' %}folder{% else %}task_alt{% endif %}</span>
+                {{ c.label }}
+              </span>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+      {% else %}
+      <div id="empty-chat" class="flex flex-col items-center justify-center h-full min-h-[300px] text-center py-12">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+          <span class="material-symbols-outlined text-primary text-3xl">smart_toy</span>
+        </div>
+        <p class="text-base font-semibold text-gray-600 dark:text-gray-400 mb-1">How can I help?</p>
+        <p class="text-sm text-gray-400 dark:text-gray-500">Type a message or use <kbd class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-xs font-mono">@</kbd> to add context.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Input area #}
+    <div class="px-4 pb-4 pt-2 border-t border-gray-200 dark:border-border-dark flex-shrink-0 bg-white dark:bg-surface-dark">
+
+      {# Mention chips #}
+      <div id="mention-chips" class="flex flex-wrap gap-1.5 mb-2"></div>
+
+      {# Mention dropdown (shown above input) #}
+      <div id="mention-dropdown" class="hidden mb-2">
+        <div class="bg-white dark:bg-surface-dark border border-gray-200 dark:border-border-dark rounded-xl shadow-xl overflow-hidden">
+          <div id="mention-results" class="max-h-56 overflow-y-auto py-1"></div>
+        </div>
+      </div>
+
+      <form id="chat-form" class="flex items-end gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="flex-1">
+          <textarea
+            id="message-input"
+            rows="1"
+            placeholder="Message… type @ to mention"
+            class="w-full resize-none rounded-xl border border-gray-200 dark:border-border-dark bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors max-h-40 overflow-y-auto leading-relaxed"
+          ></textarea>
+        </div>
+        <button type="submit" id="send-btn"
+          class="flex-shrink-0 w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+          <span class="material-symbols-outlined text-[20px]">send</span>
+        </button>
+      </form>
+    </div>
+
+    {% else %}
+
+    {# Landing / no session selected #}
+    <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
+      <div class="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-5">
+        <span class="material-symbols-outlined text-primary text-[40px]">smart_toy</span>
+      </div>
+      <h2 class="text-2xl font-bold text-gray-700 dark:text-gray-200 mb-2">AI Assistant</h2>
+      <p class="text-sm text-gray-400 dark:text-gray-500 max-w-xs mb-6">
+        Start a new conversation or pick one from the sidebar.<br>
+        Use <kbd class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 font-mono text-xs">@</kbd> to attach documents, projects, or tasks as context.
+      </p>
+      <button id="new-chat-btn-main"
+        class="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-medium shadow-sm">
+        <span class="material-symbols-outlined text-xl leading-none">add</span>
+        New Conversation
+      </button>
+    </div>
+
+    {% endif %}
+  </div>
 </div>
 
-<section class="grid grid-cols-1 lg:grid-cols-4 gap-6" data-chat-root>
-    <aside class="lg:col-span-1 bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
-        <div class="p-4 border-b border-slate-200 dark:border-border-dark">
-            <form method="post" action="{{ url_for('ai_chat.create_session') }}" class="space-y-2">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <input name="title" placeholder="New session title" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary">
-                <select name="document_id" class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary">
-                    <option value="">All documents</option>
-                    {% for document in documents %}
-                        <option value="{{ document.id }}">{{ document.original_name }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit" class="w-full py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90">New Session</button>
-            </form>
-        </div>
-
-        <div class="max-h-[520px] overflow-y-auto">
-            {% for session in sessions %}
-                <a href="{{ url_for('ai_chat.get_session', session_id=session.id) }}" class="block px-4 py-3 border-b border-slate-100 dark:border-border-dark hover:bg-slate-50 dark:hover:bg-border-dark/40 {% if selected_session and selected_session.id == session.id %}bg-primary/10{% endif %}">
-                    <p class="text-sm font-bold truncate">{{ session.title }}</p>
-                    <p class="text-[10px] text-slate-500 mt-1">{{ session.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                </a>
-            {% else %}
-                <p class="p-4 text-sm text-slate-500">No sessions yet.</p>
-            {% endfor %}
-        </div>
-    </aside>
-
-    <div class="lg:col-span-3 bg-gradient-to-br from-primary to-indigo-600 rounded-xl p-1 shadow-xl shadow-primary/20">
-        <div class="bg-white dark:bg-surface-dark rounded-lg h-full flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-bold">{{ selected_session.title if selected_session else 'No active session' }}</h3>
-                    <p class="text-xs text-slate-500">AI responses are currently placeholder stubs</p>
-                </div>
-                {% if selected_session and selected_session.document %}
-                    <button type="button" class="px-3 py-1.5 text-xs font-bold rounded border border-primary/30 text-primary hover:bg-primary hover:text-white transition-colors" data-summarize-btn data-doc-id="{{ selected_session.document.id }}">Summarize Document</button>
-                {% endif %}
-            </div>
-
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4" data-session-id="{{ selected_session.id if selected_session else '' }}">
-                {% for message in messages %}
-                    {% if message.role.value == 'user' %}
-                        <div class="flex justify-end">
-                            <div class="max-w-[80%] rounded-xl px-4 py-3 bg-primary text-white text-sm">{{ message.content }}</div>
-                        </div>
-                    {% else %}
-                        <div class="flex justify-start">
-                            <div class="max-w-[85%] rounded-xl px-4 py-3 bg-slate-100 dark:bg-border-dark text-sm">
-                                <p>{{ message.content }}</p>
-                                {% if message.citations %}
-                                    <div class="mt-2 flex flex-wrap gap-1">
-                                        {% for cite in message.citations %}
-                                            <span class="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold">{{ cite }}</span>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endif %}
-                {% else %}
-                    <p class="text-sm text-slate-500">Start a conversation to see messages.</p>
-                {% endfor %}
-            </div>
-
-            <div class="p-4 border-t border-slate-200 dark:border-border-dark">
-                <form id="chat-form" class="flex gap-2" data-send-url="{{ url_for('ai_chat.send_message', session_id=selected_session.id) if selected_session else '' }}">
-                    <input type="hidden" id="chat-csrf" value="{{ csrf_token() }}">
-                    <input id="chat-input" type="text" placeholder="Ask AI about your documents..." class="flex-1 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary" {% if not selected_session %}disabled{% endif %}>
-                    <button id="chat-send" type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-40" {% if not selected_session %}disabled{% endif %}>Send</button>
-                </form>
-            </div>
-        </div>
+{# ── New Chat Modal ────────────────────────────────────────────────────── #}
+<div id="new-chat-modal"
+  class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white dark:bg-surface-dark rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-100 dark:border-border-dark">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="text-base font-semibold text-gray-800 dark:text-gray-200">New Conversation</h3>
+      <button id="close-modal-btn"
+        class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 transition-colors">
+        <span class="material-symbols-outlined text-xl leading-none">close</span>
+      </button>
     </div>
-</section>
+    <form action="{{ url_for('ai_chat.create_session') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Title</label>
+        <input type="text" name="title" id="modal-title-input"
+          placeholder="e.g. Q2 Planning"
+          class="w-full rounded-xl border border-gray-200 dark:border-border-dark bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors">
+      </div>
+      <div class="mb-5">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+          Attach document <span class="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <select name="document_id"
+          class="w-full rounded-xl border border-gray-200 dark:border-border-dark bg-gray-50 dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors">
+          <option value="">None</option>
+          {% for doc in documents %}
+          <option value="{{ doc.id }}">{{ doc.original_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-3">
+        <button type="button" id="cancel-modal-btn"
+          class="flex-1 px-4 py-2.5 border border-gray-200 dark:border-border-dark text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium">
+          Cancel
+        </button>
+        <button type="submit"
+          class="flex-1 px-4 py-2.5 bg-primary text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-medium">
+          Create
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+  const SESSION_ID = {{ selected_session.id | tojson if selected_session else 'null' }};
+  const MENTIONS_URL = {{ url_for('ai_chat.mention_autocomplete') | tojson }};
+  {% if selected_session %}
+  const MESSAGE_URL = {{ url_for('ai_chat.send_message', session_id=selected_session.id) | tojson }};
+  {% else %}
+  const MESSAGE_URL = null;
+  {% endif %}
+</script>
 <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 {% endblock %}

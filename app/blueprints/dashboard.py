@@ -26,32 +26,104 @@ def index():
         Task.status != TaskStatus.DONE,
     ).count()
 
-    ai_insights = [
-        {
+    tomorrow_end = now + timedelta(days=1)
+    week_end = now + timedelta(days=7)
+    week_start = now - timedelta(days=7)
+
+    overdue_count = Task.query.filter(
+        Task.due_date.isnot(None),
+        Task.due_date < now,
+        Task.status != TaskStatus.DONE,
+    ).count()
+
+    due_soon_count = Task.query.filter(
+        Task.due_date.isnot(None),
+        Task.due_date >= now,
+        Task.due_date <= tomorrow_end,
+        Task.status != TaskStatus.DONE,
+    ).count()
+
+    due_this_week_count = Task.query.filter(
+        Task.due_date.isnot(None),
+        Task.due_date > tomorrow_end,
+        Task.due_date <= week_end,
+        Task.status != TaskStatus.DONE,
+    ).count()
+
+    done_recently_count = Task.query.filter(
+        Task.status == TaskStatus.DONE,
+        Task.created_at >= week_start,
+    ).count()
+
+    high_no_due_count = Task.query.filter(
+        Task.priority.in_([TaskPriority.HIGH, TaskPriority.CRITICAL]),
+        Task.due_date.is_(None),
+        Task.status != TaskStatus.DONE,
+    ).count()
+
+    ai_insights = []
+
+    if overdue_count:
+        task_word = "task" if overdue_count == 1 else "tasks"
+        ai_insights.append({
             "type_label": "Risk Detection",
-            "title": "Contract clause mismatch in Project Delta",
-            "description": "AI detected a conflict between the vendor MSA and recent scope amendments.",
-            "timestamp": "2m ago",
-            "action_label": "Review Diff",
+            "title": f"{overdue_count} overdue {task_word}",
+            "description": f"{overdue_count} {task_word} passed their due date without being completed.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=overdue",
+            "tone": "default",
+        })
+
+    if due_soon_count:
+        task_word = "task" if due_soon_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Deadline Alert",
+            "title": f"{due_soon_count} {task_word} due today or tomorrow",
+            "description": f"{due_soon_count} {task_word} need attention in the next 24 hours.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=due_week",
             "tone": "primary",
-        },
-        {
-            "type_label": "Summarization",
-            "title": "Technical Spec V3 Summary",
-            "description": "Key takeaway: Required latency reduced from 200ms to 50ms for AI processing nodes.",
-            "timestamp": "1h ago",
-            "action_label": "Open Summary",
+        })
+
+    if due_this_week_count:
+        task_word = "task" if due_this_week_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Upcoming Work",
+            "title": f"{due_this_week_count} {task_word} due this week",
+            "description": f"Plan ahead — {due_this_week_count} {task_word} are scheduled for the next 7 days.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=due_week",
             "tone": "indigo",
-        },
-        {
-            "type_label": "Opportunity",
-            "title": "Resource Optimization Identified",
-            "description": "AI suggests reallocating 2 backend devs from project Beta to Alpha based on task velocity.",
-            "timestamp": "4h ago",
-            "action_label": "View Suggestion",
+        })
+
+    if done_recently_count:
+        task_word = "task" if done_recently_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Achievement",
+            "title": f"{done_recently_count} {task_word} completed this week",
+            "description": f"Great progress — {done_recently_count} {task_word} were marked done in the last 7 days.",
+            "timestamp": "This week",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?status=done",
             "tone": "emerald",
-        },
-    ]
+        })
+
+    if high_no_due_count and len(ai_insights) < 4:
+        task_word = "task" if high_no_due_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Attention Needed",
+            "title": f"{high_no_due_count} high-priority {task_word} without a deadline",
+            "description": f"{high_no_due_count} high or critical priority {task_word} have no due date set.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=high_priority",
+            "tone": "indigo",
+        })
+
+    ai_insights = ai_insights[:4]
     ai_insight_count = len(ai_insights)
 
     projects = (
@@ -91,6 +163,7 @@ def index():
 
         project_rows.append(
             {
+                "id": project.id,
                 "name": project.name,
                 "progress": project.progress,
                 "due_label": due_label,

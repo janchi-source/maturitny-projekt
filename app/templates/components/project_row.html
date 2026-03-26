@@ -1,9 +1,9 @@
-{% macro project_row(name, progress, due_label='Due soon', dot_color='bg-primary', team=[]) %}
+{% macro project_row(name, progress, due_label='Due soon', dot_color='bg-primary', team=[], url=None) %}
 <div class="flex flex-col gap-2">
     <div class="flex justify-between items-center text-sm font-bold">
         <div class="flex items-center gap-2">
             <span class="size-2 {{ dot_color }} rounded-full"></span>
-            <span>{{ name }}</span>
+            {% if url %}<a href="{{ url }}" class="hover:text-primary transition-colors">{{ name }}</a>{% else %}<span>{{ name }}</span>{% endif %}
         </div>
         <span>{{ progress }}%</span>
     </div>

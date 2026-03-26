@@ -37,7 +37,7 @@
             <div class="p-6 flex flex-col gap-6">
                 {% if top_projects %}
                     {% for project in top_projects %}
-                        {{ project_row(project.name, project.progress, project.due_label, project.dot_color, project.team) }}
+                        {{ project_row(project.name, project.progress, project.due_label, project.dot_color, project.team, url_for('projects.detail', project_id=project.id)) }}
                     {% endfor %}
                 {% else %}
                     <p class="text-sm text-slate-500 dark:text-slate-400">No active projects found.</p>
@@ -71,7 +71,7 @@
                             {% else %}
                                 {% set status_label = 'Pending' %}
                             {% endif %}
-                            {{ task_row(task.title, task.assignee.username if task.assignee else 'Unassigned', status_label, task.progress) }}
+                            {{ task_row(task.title, task.assignee.username if task.assignee else 'Unassigned', status_label, task.progress, url_for('tasks.detail', task_id=task.id)) }}
                         {% endfor %}
                     {% else %}
                         <tr>
@@ -96,7 +96,7 @@
                 </div>
                 <div class="flex flex-col divide-y divide-slate-100 dark:divide-border-dark">
                     {% for insight in ai_insights %}
-                        {{ ai_insight(insight.type_label, insight.title, insight.description, insight.timestamp, insight.action_label, insight.tone) }}
+                        {{ ai_insight(insight.type_label, insight.title, insight.description, insight.timestamp, insight.action_label, insight.tone, insight.action_url) }}
                     {% endfor %}
                 </div>
                 <div class="mt-auto p-4 bg-slate-50 dark:bg-border-dark/30">

@@ -50,14 +50,14 @@
 <div class="flex h-screen overflow-hidden">
     {% include 'components/sidebar.html' %}
 
-    <main class="flex-1 flex flex-col overflow-y-auto">
+    <main class="flex-1 flex flex-col {% block main_class %}overflow-y-auto{% endblock %}">
         {% include 'components/header.html' %}
-
+        {% block main_content %}
         <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
             {% block content %}{% endblock %}
         </div>
-
         {% include 'components/footer.html' %}
+        {% endblock %}
     </main>
 </div>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>

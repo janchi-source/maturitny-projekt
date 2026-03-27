@@ -136,11 +136,7 @@ def detail(project_id):
     is_watching = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first() is not None
     watchers = [watch.user for watch in project.watchers if watch.user]
     active_invites = sorted(
-        [
-            invite
-            for invite in project.invites
-            if invite.used_at is None and invite.expires_at > datetime.utcnow()
-        ],
+        [invite for invite in project.invites if invite.is_available()],
         key=lambda invite: invite.created_at,
         reverse=True,
     )
@@ -283,12 +279,8 @@ def join_with_invite():
         flash("Invite code is invalid.", "error")
         return redirect(url_for("projects.index"))
 
-    if invite.used_at is not None:
-        flash("Invite code has already been used.", "error")
-        return redirect(url_for("projects.index"))
-
-    if invite.expires_at <= datetime.utcnow():
-        flash("Invite code has expired.", "error")
+    if not invite.is_available():
+        flash("Invite code is no longer available.", "error")
         return redirect(url_for("projects.index"))
 
     membership = ProjectMembership.query.filter_by(project_id=invite.project_id, user_id=current_user.id).first()

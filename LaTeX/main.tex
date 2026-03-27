@@ -1,0 +1,310 @@
+% =============================================================
+%  SPŠE Zochova 9 – Maturitný projekt
+%  Hlavný súbor šablóny – TU NIČ NEMEŇTE okrem údajov v sekcii
+%  "NASTAVENIE PROJEKTU" nižšie
+% =============================================================
+
+\documentclass[12pt, a4paper]{report}
+
+% ── Kódovanie a jazyk ─────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[slovak]{babel}
+
+% ── Písmo ─────────────────────────────────────────────────────
+\usepackage{times}          % Times New Roman
+
+% ── Okraje: ľavo 3,5 cm, ostatné 2,5 cm ──────────────────────
+\usepackage[
+  left   = 3.5cm,
+  right  = 2.5cm,
+  top    = 2.5cm,
+  bottom = 2.5cm
+]{geometry}
+
+% ── Riadkovanie 1,5 ───────────────────────────────────────────
+\usepackage{setspace}
+\onehalfspacing
+
+% ── Odsadenie odsekov (tabulátor, nie medzera) ────────────────
+\usepackage{indentfirst}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+% ── Hlavičky / číslovanie strán ───────────────────────────────
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+
+% ── Obrázky ───────────────────────────────────────────────────
+\usepackage{graphicx}
+\usepackage{float}
+\graphicspath{{images/}}
+
+% ── Tabuľky ───────────────────────────────────────────────────
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+
+% ── Zoznamy ───────────────────────────────────────────────────
+\usepackage{enumitem}
+
+% ── Hypertextové odkazy ───────────────────────────────────────
+\usepackage[hidelinks]{hyperref}
+
+% ── Kódové ukážky (listings) ──────────────────────────────────
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codebg}{RGB}{245,247,248}
+\definecolor{codeframe}{RGB}{200,210,220}
+\definecolor{codecomment}{RGB}{100,130,100}
+\definecolor{codekeyword}{RGB}{0,0,200}
+\definecolor{codestring}{RGB}{180,0,0}
+
+\lstset{
+  backgroundcolor = \color{codebg},
+  frame           = single,
+  rulecolor       = \color{codeframe},
+  basicstyle      = \ttfamily\small,
+  keywordstyle    = \color{codekeyword}\bfseries,
+  commentstyle    = \color{codecomment}\itshape,
+  stringstyle     = \color{codestring},
+  breaklines      = true,
+  numbers         = left,
+  numberstyle     = \tiny\color{gray},
+  numbersep       = 5pt,
+  showstringspaces= false,
+  captionpos      = b,
+}
+
+% ── Skratky pre opakujúce sa frázy ────────────────────────────
+\usepackage{xspace}
+
+% ── Zoznam obrázkov / tabuliek ────────────────────────────────
+\usepackage[
+  font       = small,
+  labelfont  = bf,
+  labelsep   = endash,
+  justification = centering
+]{caption}
+
+% ── Bibliografické citácie [1] ────────────────────────────────
+\usepackage[numbers]{natbib}
+\bibliographystyle{unsrtnat}   % poradie podľa výskytu v texte
+
+% =============================================================
+%  NASTAVENIE PROJEKTU  ← sem vpíšte vaše údaje
+% =============================================================
+\newcommand{\projektNazov}{Názov maturitného projektu}
+\newcommand{\menoKandidata}{Meno Priezvisko}
+\newcommand{\trieda}{IV.X}
+\newcommand{\veduciPrace}{Meno Vedúceho}
+\newcommand{\skolskýRok}{2025/2026}
+\newcommand{\datumOdovzdania}{dd.mm.2026}
+\newcommand{\pocetStran}{??}
+\newcommand{\pocetObrazkov}{??}
+\newcommand{\pocetTabuliek}{??}
+\newcommand{\pocetPriloh}{??}
+% =============================================================
+
+% ── Štýl nadpisov (bez „Kapitola X") ─────────────────────────
+\usepackage{titlesec}
+
+% Teoretická / Praktická časť – veľký tučný nadpis
+\titleformat{\part}[display]
+  {\normalfont\Large\bfseries\centering}
+  {}
+  {0pt}
+  {\MakeUppercase}
+
+% Kapitoly (1, 2, 3 …) – tučné, 14pt
+\titleformat{\chapter}[hang]
+  {\normalfont\large\bfseries}
+  {\thechapter}
+  {0.5em}
+  {}
+\titlespacing{\chapter}{0pt}{12pt}{6pt}
+
+% Podkapitoly (1.1, 1.2 …) – tučné, 12pt
+\titleformat{\section}[hang]
+  {\normalfont\normalsize\bfseries}
+  {\thesection}
+  {0.5em}
+  {}
+\titlespacing{\section}{0pt}{10pt}{4pt}
+
+% Podpodkapitoly (1.1.1 …)
+\titleformat{\subsection}[hang]
+  {\normalfont\normalsize\bfseries}
+  {\thesubsection}
+  {0.5em}
+  {}
+\titlespacing{\subsection}{0pt}{8pt}{2pt}
+
+% Potlačiť "Kapitola X" v záhlaví
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\@makechapterhead}{\vspace*{50\p@}}{\vspace*{0pt}}{}{}
+\patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{\vspace*{0pt}}{}{}
+\makeatother
+
+% =============================================================
+%  DOKUMENT
+% =============================================================
+\begin{document}
+
+% ────────────────────────────────────────────────────────────
+%  TITULNÁ STRANA
+% ────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+\begin{center}
+  {\bfseries STREDNÁ PRIEMYSELNÁ ŠKOLA ELEKTROTECHNICKÁ\\
+  ZOCHOVA 9, BRATISLAVA}
+
+  \vspace{2cm}
+  \includegraphics[width=4cm]{spse_logo.png}   % logo školy
+  \vspace{2cm}
+
+  {\large\bfseries \projektNazov}\\[0.4cm]
+  {\small projekt z praktickej časti odbornej zložky maturitnej skúšky}
+\end{center}
+
+\vfill
+\begin{tabular}{@{}ll@{\hspace{4cm}}ll@{}}
+  \textbf{Meno kandidáta:} & \menoKandidata  &
+  \textbf{Trieda:}         & \trieda         \\[6pt]
+  \textbf{Vedúci práce:}   & \veduciPrace    &
+  \textbf{Šk. rok:}        & \skolskýRok     \\
+\end{tabular}
+
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  OBÁLKA (titulný list s rozsahom a podpisom)
+% ────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+\begin{center}
+  {\bfseries STREDNÁ PRIEMYSELNÁ ŠKOLA ELEKTROTECHNICKÁ\\
+  ZOCHOVA 9, BRATISLAVA}
+
+  \vspace{3cm}
+  {\large\bfseries \projektNazov}
+\end{center}
+
+\vfill
+\begin{tabular}{@{}ll@{\hspace{3cm}}ll@{}}
+  \textbf{Meno kandidáta:} & \menoKandidata  &
+  \textbf{Trieda:}         & \trieda         \\[6pt]
+  \textbf{Vedúci práce:}   & \veduciPrace    & \\[6pt]
+  \multicolumn{4}{@{}l}{\textbf{Rozsah:} \pocetStran\ strán, \pocetObrazkov\ obrázkov,
+    \pocetTabuliek\ tabuliek, \pocetPriloh\ príloh}
+\end{tabular}
+
+\vspace{1.5cm}
+\begin{tabular}{@{}ll@{\hspace{3cm}}l@{}}
+  \textbf{Odovzdané:} & \datumOdovzdania &
+  \textbf{Podpis vedúceho práce:} \rule{5cm}{0.4pt}
+\end{tabular}
+
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  ORIGINÁL ZADANIA  (vložte naskenovaný PDF alebo obrázok)
+% ────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+% \includepdf{zadanie_original.pdf}   % odkomentujte po získaní originálu
+\begin{center}
+  \vspace*{8cm}
+  {\itshape Tu bude vložený originál zadania projektu.}
+\end{center}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  ČESTNÉ PREHLÁSENIE
+% ────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+\input{content/00_cestne_prehlasenie}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  POĎAKOVANIE  (nepovinné)
+% ────────────────────────────────────────────────────────────
+\thispagestyle{empty}
+\input{content/01_podakovanie}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  OBSAH
+% ────────────────────────────────────────────────────────────
+\pagestyle{empty}
+{\renewcommand{\contentsname}{\bfseries OBSAH}
+\tableofcontents}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  ZOZNAM OBRÁZKOV
+% ────────────────────────────────────────────────────────────
+\pagestyle{empty}
+{\renewcommand{\listfigurename}{\bfseries ZOZNAM OBRÁZKOV}
+\listoffigures}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  ZOZNAM TABULIEK  (vymažte blok ak nemáte tabuľky)
+% ────────────────────────────────────────────────────────────
+\pagestyle{empty}
+{\renewcommand{\listtablename}{\bfseries ZOZNAM TABULIEK}
+\listoftables}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  ZOZNAM SKRATIEK
+% ────────────────────────────────────────────────────────────
+\pagestyle{empty}
+\input{content/02_zoznam_skratiek}
+\newpage
+
+% ────────────────────────────────────────────────────────────
+%  OD TU ZAČÍNA ČÍSLOVANIE STRÁN (strana 1 = Úvod)
+% ────────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\setcounter{page}{1}
+
+% ── ÚVOD ─────────────────────────────────────────────────────
+\input{content/03_uvod}
+
+% ── TEORETICKÁ ČASŤ ──────────────────────────────────────────
+\addcontentsline{toc}{part}{TEORETICKÁ ČASŤ}
+{\centering\Large\bfseries TEORETICKÁ ČASŤ\par}
+\vspace{1cm}
+
+\input{content/04_riesena_problematika}
+\input{content/05_ciel_prace}
+\input{content/06_pouzite_technologie}
+
+% ── PRAKTICKÁ ČASŤ ───────────────────────────────────────────
+\addcontentsline{toc}{part}{PRAKTICKÁ ČASŤ}
+{\centering\Large\bfseries PRAKTICKÁ ČASŤ\par}
+\vspace{1cm}
+
+\input{content/07_dizajn_architektura}
+\input{content/08_databazovy_model}
+\input{content/09_autentifikacia}
+\input{content/10_projekty_ulohy}
+\input{content/11_dokumenty}
+\input{content/12_ai_chat}
+\input{content/13_dashboard}
+\input{content/14_spustenie}
+
+% ── ZÁVER ────────────────────────────────────────────────────
+\input{content/15_zaver}
+
+% ── BIBLIOGRAFICKÉ ODKAZY ─────────────────────────────────────
+\newpage
+{\renewcommand{\bibname}{\bfseries ZOZNAM BIBLIOGRAFICKÝCH ODKAZOV}
+\bibliography{content/bibliografia}}
+
+\end{document}

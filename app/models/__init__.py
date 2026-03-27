@@ -7,6 +7,7 @@ from .planning import (
     ApiToken,
     AutomationRule,
     Notification,
+    ProjectInvite,
     ProjectMembership,
     ProjectMembershipRole,
     ProjectWatcher,
@@ -91,6 +92,33 @@ def _ensure_legacy_schema_updates():
     if filter_columns and "hierarchy" not in filter_existing:
         db.session.execute(db.text("ALTER TABLE task_saved_filters ADD COLUMN hierarchy VARCHAR(30) DEFAULT 'all' NOT NULL"))
 
+    try:
+        invite_columns = db.session.execute(db.text("PRAGMA table_info(project_invites)")).fetchall()
+    except Exception:
+        invite_columns = []
+
+    if not invite_columns:
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE IF NOT EXISTS project_invites (
+                    id INTEGER PRIMARY KEY,
+                    project_id INTEGER NOT NULL,
+                    code VARCHAR(32) NOT NULL UNIQUE,
+                    role VARCHAR(20) NOT NULL,
+                    created_by INTEGER,
+                    created_at DATETIME NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    used_at DATETIME,
+                    used_by INTEGER,
+                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL,
+                    FOREIGN KEY(used_by) REFERENCES users(id) ON DELETE SET NULL
+                )
+                """
+            )
+        )
+
     db.session.commit()
 
 
@@ -105,6 +133,7 @@ __all__ = [
     "TaskSavedFilter",
     "Notification",
     "ApiToken",
+    "ProjectInvite",
     "ProjectMembership",
     "ProjectMembershipRole",
     "TaskWatcher",

@@ -116,6 +116,31 @@
                             </select>
                             <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Add / Update Member</button>
                         </form>
+
+                        <form method="post" action="{{ url_for('projects.create_invite', project_id=project.id) }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="text" value="Invite code expires in 24 hours" readonly class="sm:col-span-2 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-500">
+                            <select name="role" required class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+                                {% for role in membership_roles %}
+                                    <option value="{{ role }}">{{ role|title }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2.5 bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 rounded-lg text-sm font-bold sm:col-span-3">Generate Invite Code</button>
+                        </form>
+                    {% endif %}
+
+                    {% if active_invites %}
+                        <div class="mb-4 border border-slate-200 dark:border-border-dark rounded-lg p-3">
+                            <p class="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Active Invite Codes</p>
+                            <div class="space-y-2">
+                                {% for invite in active_invites %}
+                                    <div class="text-xs sm:text-sm flex flex-wrap items-center justify-between gap-2">
+                                        <span class="font-mono font-bold">{{ invite.code }}</span>
+                                        <span class="text-slate-500">{{ invite.role.value|title }} • expires {{ invite.expires_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     {% endif %}
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

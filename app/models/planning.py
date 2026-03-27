@@ -1,6 +1,6 @@
 import enum
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..extensions import db
 
@@ -127,6 +127,40 @@ class ProjectMembership(db.Model):
 
     project = db.relationship("Project", back_populates="memberships")
     user = db.relationship("User", back_populates="project_memberships")
+
+
+class ProjectInvite(db.Model):
+    __tablename__ = "project_invites"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    code = db.Column(db.String(32), nullable=False, unique=True)
+    role = db.Column(
+        db.Enum(ProjectMembershipRole, name="project_invite_role", native_enum=False),
+        nullable=False,
+        default=ProjectMembershipRole.MEMBER,
+    )
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime, nullable=True)
+    used_by = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    project = db.relationship("Project", back_populates="invites")
+
+    @staticmethod
+    def generate_code():
+        return secrets.token_urlsafe(9)
+
+    @staticmethod
+    def default_expiry():
+        return datetime.utcnow() + timedelta(hours=24)
+
+    def is_expired(self):
+        return datetime.utcnow() >= self.expires_at
+
+    def is_available(self):
+        return self.used_at is None and not self.is_expired()
 
 
 class TaskWatcher(db.Model):

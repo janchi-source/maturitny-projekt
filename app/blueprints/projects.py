@@ -1,9 +1,17 @@
+from datetime import datetime
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import func
 
 from ..extensions import db
-from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher
+from ..models.planning import (
+    AutomationRule,
+    ProjectInvite,
+    ProjectMembership,
+    ProjectMembershipRole,
+    ProjectWatcher,
+)
 from ..models.project import Project, ProjectStatus
 from ..models.user import User
 from ..models.user import UserRole
@@ -127,6 +135,15 @@ def detail(project_id):
     membership_map = {membership.user_id: membership for membership in project.memberships}
     is_watching = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first() is not None
     watchers = [watch.user for watch in project.watchers if watch.user]
+    active_invites = sorted(
+        [
+            invite
+            for invite in project.invites
+            if invite.used_at is None and invite.expires_at > datetime.utcnow()
+        ],
+        key=lambda invite: invite.created_at,
+        reverse=True,
+    )
 
     return render_template(
         "projects/detail.html",
@@ -138,6 +155,7 @@ def detail(project_id):
         users_for_membership=User.query.order_by(User.username.asc()).all(),
         membership_map=membership_map,
         membership_roles=[role.value for role in ProjectMembershipRole],
+        active_invites=active_invites,
         watchers=watchers,
         is_watching=is_watching,
         automation_rules=sorted(project.automation_rules, key=lambda rule: rule.created_at, reverse=True),
@@ -214,6 +232,88 @@ def upsert_member(project_id):
     db.session.commit()
     flash("Project membership updated.", "success")
     return redirect(url_for("projects.detail", project_id=project.id, tab="team"))
+
+
+@projects_bp.route("/<int:project_id>/invites", methods=["POST"])
+@login_required
+def create_invite(project_id):
+    project = Project.query.get_or_404(project_id)
+    _require_project_manager()
+
+    role_raw = request.form.get("role", "").strip().lower()
+    try:
+        role = ProjectMembershipRole(role_raw)
+    except ValueError:
+        flash("Invalid invite role.", "error")
+        return redirect(url_for("projects.detail", project_id=project.id, tab="team"))
+
+    code = ProjectInvite.generate_code()
+    while ProjectInvite.query.filter_by(code=code).first():
+        code = ProjectInvite.generate_code()
+
+    invite = ProjectInvite(
+        project_id=project.id,
+        code=code,
+        role=role,
+        created_by=current_user.id,
+        expires_at=ProjectInvite.default_expiry(),
+    )
+    db.session.add(invite)
+    log_audit(
+        action="project.invite_created",
+        resource_type="project",
+        resource_id=project.id,
+        details=f"Invite code created with role {role.value}",
+    )
+    db.session.commit()
+    flash("Invite code generated (expires in 24 hours).", "success")
+    return redirect(url_for("projects.detail", project_id=project.id, tab="team"))
+
+
+@projects_bp.route("/join", methods=["POST"])
+@login_required
+def join_with_invite():
+    code = request.form.get("invite_code", "").strip()
+    if not code:
+        flash("Invite code is required.", "error")
+        return redirect(url_for("projects.index"))
+
+    invite = ProjectInvite.query.filter_by(code=code).first()
+    if not invite:
+        flash("Invite code is invalid.", "error")
+        return redirect(url_for("projects.index"))
+
+    if invite.used_at is not None:
+        flash("Invite code has already been used.", "error")
+        return redirect(url_for("projects.index"))
+
+    if invite.expires_at <= datetime.utcnow():
+        flash("Invite code has expired.", "error")
+        return redirect(url_for("projects.index"))
+
+    membership = ProjectMembership.query.filter_by(project_id=invite.project_id, user_id=current_user.id).first()
+    if membership:
+        membership.role = invite.role
+    else:
+        membership = ProjectMembership(
+            project_id=invite.project_id,
+            user_id=current_user.id,
+            role=invite.role,
+        )
+        db.session.add(membership)
+
+    invite.used_at = datetime.utcnow()
+    invite.used_by = current_user.id
+
+    log_audit(
+        action="project.invite_redeemed",
+        resource_type="project",
+        resource_id=invite.project_id,
+        details=f"Invite redeemed by user #{current_user.id} with role {invite.role.value}",
+    )
+    db.session.commit()
+    flash("You joined the project successfully.", "success")
+    return redirect(url_for("projects.detail", project_id=invite.project_id, tab="team"))
 
 
 @projects_bp.route("/<int:project_id>/members/<int:user_id>/remove", methods=["POST"])

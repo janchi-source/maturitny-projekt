@@ -37,5 +37,6 @@ class Project(db.Model):
         uselist=False,
     )
     memberships = db.relationship("ProjectMembership", back_populates="project", cascade="all, delete-orphan")
+    invites = db.relationship("ProjectInvite", back_populates="project", cascade="all, delete-orphan")
     watchers = db.relationship("ProjectWatcher", back_populates="project", cascade="all, delete-orphan")
     automation_rules = db.relationship("AutomationRule", back_populates="project", cascade="all, delete-orphan")

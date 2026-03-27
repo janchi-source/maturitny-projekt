@@ -278,7 +278,7 @@ def delete(project_id):
 def _can_manage_projects():
     if not current_user.is_authenticated:
         return False
-    return current_user.role in {UserRole.ADMIN, UserRole.OWNER}
+    return current_user.role in {UserRole.ADMIN, UserRole.LEADER}
 
 
 def _require_project_manager():

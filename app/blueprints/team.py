@@ -4,7 +4,7 @@ from sqlalchemy.orm import subqueryload
 
 from ..blueprints import role_required
 from ..extensions import db
-from ..models.user import User, UserRole
+from ..models.user import RoleLabelSetting, User, UserRole
 
 
 team_bp = Blueprint("team", __name__)
@@ -64,6 +64,28 @@ def edit(user_id):
         user=user,
         role_values=[role.value for role in UserRole],
     )
+
+
+@team_bp.route("/roles", methods=["GET", "POST"])
+@role_required(UserRole.ADMIN)
+def manage_roles():
+    if request.method == "POST":
+        for role in UserRole:
+            label = request.form.get(f"label_{role.value}", "").strip()
+            if not label:
+                continue
+            setting = RoleLabelSetting.query.filter_by(role_value=role.value).first()
+            if setting:
+                setting.label = label
+            else:
+                db.session.add(RoleLabelSetting(role_value=role.value, label=label))
+        db.session.commit()
+        flash("Role labels updated.", "success")
+        return redirect(url_for("team.manage_roles"))
+
+    role_labels = {s.role_value: s.label for s in RoleLabelSetting.query.all()}
+    roles = [(role.value, role_labels.get(role.value, role.value.capitalize())) for role in UserRole]
+    return render_template("team/roles.html", roles=roles)
 
 
 @team_bp.route("/<int:user_id>/delete", methods=["POST"])

@@ -47,7 +47,7 @@ def register():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
-        role_value = request.form.get("role", UserRole.SECRETARIAT.value).strip().lower()
+        role_value = request.form.get("role", UserRole.ANIMATOR.value).strip().lower()
 
         if not username or not email or not password:
             flash("Username, email, and password are required.", "error")

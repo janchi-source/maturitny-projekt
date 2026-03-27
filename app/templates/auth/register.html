@@ -57,7 +57,7 @@
                     <label for="role" class="block text-sm font-semibold mb-1">Role</label>
                     <select id="role" name="role" class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:ring-2 focus:ring-primary">
                         {% for role_value in role_values %}
-                            <option value="{{ role_value }}">{{ role_value|replace('_', ' ')|title }}</option>
+                            <option value="{{ role_value }}">{{ role_label_map.get(role_value, role_value|title) }}</option>
                         {% endfor %}
                     </select>
                 </div>

@@ -57,7 +57,7 @@ def main():
     app = create_app()
     with app.app_context():
         admin = get_or_create_user("admin", "admin@promat.local", UserRole.ADMIN)
-        member = get_or_create_user("member", "member@promat.local", UserRole.ADVOCATE)
+        member = get_or_create_user("member", "member@promat.local", UserRole.COORDINATOR)
 
         projects = [
             get_or_create_project(

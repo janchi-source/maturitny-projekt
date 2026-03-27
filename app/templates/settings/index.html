@@ -30,7 +30,7 @@
 
             <div>
                 <label class="block text-sm font-semibold mb-1">Role</label>
-                <input type="text" value="{{ current_user.role.value | replace('_', ' ') | title }}" disabled
+                <input type="text" value="{{ role_label_map.get(current_user.role.value, current_user.role.value | title) }}" disabled
                     class="w-full bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm opacity-60">
             </div>
 

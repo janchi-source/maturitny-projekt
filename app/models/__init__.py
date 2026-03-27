@@ -17,7 +17,7 @@ from .planning import (
 )
 from .project import Project, ProjectStatus
 from .task import Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
-from .user import User, UserRole
+from .user import RoleLabelSetting, User, UserRole
 
 
 def init_db():
@@ -36,10 +36,25 @@ def _ensure_legacy_schema_updates():
         db.session.execute(db.text("ALTER TABLE tasks ADD COLUMN sprint_id INTEGER"))
         db.session.commit()
 
+    # Migrate old role values to new role names
+    old_to_new = {
+        "owner": "leader",
+        "advocate": "coordinator",
+        "koncipient": "animator",
+        "secretariat": "animator",
+    }
+    for old, new in old_to_new.items():
+        db.session.execute(
+            db.text("UPDATE users SET role = :new WHERE role = :old"),
+            {"old": old, "new": new},
+        )
+    db.session.commit()
+
 
 __all__ = [
     "User",
     "UserRole",
+    "RoleLabelSetting",
     "Project",
     "ProjectStatus",
     "Sprint",

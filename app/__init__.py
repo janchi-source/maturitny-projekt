@@ -50,6 +50,13 @@ def create_app(config_class=Config):
     app.register_blueprint(settings_bp, url_prefix="/settings")
 
     @app.context_processor
+    def inject_role_label_map():
+        from .models.user import RoleLabelSetting, UserRole
+        custom = {s.role_value: s.label for s in RoleLabelSetting.query.all()}
+        role_label_map = {role.value: custom.get(role.value, role.value.capitalize()) for role in UserRole}
+        return {"role_label_map": role_label_map}
+
+    @app.context_processor
     def inject_header_notifications():
         if current_user.is_authenticated:
             from .models.planning import Notification

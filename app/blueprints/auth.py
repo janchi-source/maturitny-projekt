@@ -1,10 +1,10 @@
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..cache_helpers import warm_cache_for_user
 from ..extensions import db, login_manager
-from ..models.user import User, UserRole
+from ..models.user import ManagedRole, User, UserManagedRole, UserRole
 
 
 auth_bp = Blueprint("auth", __name__)
@@ -47,37 +47,46 @@ def register():
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
-        role_value = request.form.get("role", UserRole.ANIMATOR.value).strip().lower()
+        invitation_code = request.form.get("invitation_code", "").strip()
+        expected_invitation_code = current_app.config.get("REGISTRATION_INVITE_CODE", "")
 
         if not username or not email or not password:
             flash("Username, email, and password are required.", "error")
-            return render_template("auth/register.html", role_values=[role.value for role in UserRole])
+            return render_template("auth/register.html")
+
+        if not invitation_code:
+            flash("Invitation code is required.", "error")
+            return render_template("auth/register.html")
+
+        if not expected_invitation_code or invitation_code != expected_invitation_code:
+            flash("Invalid invitation code.", "error")
+            return render_template("auth/register.html")
 
         if password != confirm_password:
             flash("Passwords do not match.", "error")
-            return render_template("auth/register.html", role_values=[role.value for role in UserRole])
+            return render_template("auth/register.html")
 
         if User.query.filter_by(email=email).first() is not None:
             flash("Email is already in use.", "error")
-            return render_template("auth/register.html", role_values=[role.value for role in UserRole])
+            return render_template("auth/register.html")
 
         if User.query.filter_by(username=username).first() is not None:
             flash("Username is already in use.", "error")
-            return render_template("auth/register.html", role_values=[role.value for role in UserRole])
-
-        try:
-            role = UserRole(role_value)
-        except ValueError:
-            flash("Invalid role selected.", "error")
-            return render_template("auth/register.html", role_values=[role.value for role in UserRole])
+            return render_template("auth/register.html")
 
         user = User(
             username=username,
             email=email,
             password_hash=generate_password_hash(password),
-            role=role,
+            role=UserRole.ANIMATOR,
         )
         db.session.add(user)
+        db.session.flush()
+
+        basic_role = ManagedRole.query.filter_by(key="basic").first()
+        if basic_role is not None:
+            db.session.add(UserManagedRole(user_id=user.id, role_id=basic_role.id))
+
         db.session.commit()
 
         login_user(user)
@@ -85,7 +94,7 @@ def register():
         flash("Account created successfully.", "success")
         return redirect(url_for("dashboard.index", _prefetch="1"))
 
-    return render_template("auth/register.html", role_values=[role.value for role in UserRole])
+    return render_template("auth/register.html")
 
 
 @auth_bp.route("/logout")

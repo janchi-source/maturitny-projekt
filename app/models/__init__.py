@@ -17,12 +17,24 @@ from .planning import (
 )
 from .project import Project, ProjectStatus
 from .task import Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
-from .user import RoleLabelSetting, User, UserRole
+from .user import (
+    ManagedRole,
+    ROLE_RIGHTS,
+    RoleLabelSetting,
+    User,
+    UserManagedRole,
+    UserRole,
+    ensure_default_managed_roles,
+    get_effective_role_rights,
+    normalize_role_rights,
+    user_has_right,
+)
 
 
 def init_db():
     db.create_all()
     _ensure_legacy_schema_updates()
+    ensure_default_managed_roles()
 
 
 def _ensure_legacy_schema_updates():
@@ -50,10 +62,28 @@ def _ensure_legacy_schema_updates():
         )
     db.session.commit()
 
+    try:
+        role_columns = db.session.execute(db.text("PRAGMA table_info(managed_roles)")).fetchall()
+    except Exception:
+        role_columns = []
+
+    if role_columns:
+        role_existing = {str(column[1]).lower() for column in role_columns}
+        if "rights" not in role_existing:
+            db.session.execute(db.text("ALTER TABLE managed_roles ADD COLUMN rights JSON"))
+            db.session.execute(db.text("UPDATE managed_roles SET rights = '{}' WHERE rights IS NULL"))
+            db.session.commit()
+
 
 __all__ = [
     "User",
     "UserRole",
+    "ManagedRole",
+    "UserManagedRole",
+    "ROLE_RIGHTS",
+    "normalize_role_rights",
+    "get_effective_role_rights",
+    "user_has_right",
     "RoleLabelSetting",
     "Project",
     "ProjectStatus",

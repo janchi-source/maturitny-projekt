@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Reviews | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-black tracking-tight">Review Queue</h2>
+        <p class="text-slate-500 dark:text-slate-400 font-medium">Admin and manager workspace for approvals and change requests</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{{ url_for('tasks.index') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Back to Tasks</a>
+    </div>
+</div>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-4 sm:p-5 mb-6">
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <select name="project" class="bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2.5 text-sm">
+            <option value="">All projects</option>
+            {% for project in projects %}
+                <option value="{{ project.id }}" {% if project_filter == project.id|string %}selected{% endif %}>{{ project.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-4 py-2.5 bg-primary text-white rounded-lg text-sm font-bold">Apply</button>
+        <a href="{{ url_for('tasks.reviews') }}" class="px-4 py-2.5 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50 text-center">Clear</a>
+    </form>
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5 mb-6">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold">Tasks Waiting For Review</h3>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{{ review_tasks|length }} tasks</span>
+    </div>
+
+    <div class="space-y-3">
+        {% for task in review_tasks %}
+            <article class="border border-slate-200 dark:border-border-dark rounded-lg p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <div>
+                        <a href="{{ url_for('tasks.detail', task_id=task.id, next=url_for('tasks.reviews')) }}" class="text-sm font-bold hover:text-primary">{{ task.title }}</a>
+                        <p class="text-xs text-slate-500 mt-1">{{ task.project.name if task.project else 'No project' }} • {{ task.assignee.username if task.assignee else 'Unassigned' }}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded bg-blue-100 dark:bg-primary/20 text-primary text-[10px] font-black uppercase">In Review</span>
+                </div>
+
+                <form method="post" action="{{ url_for('tasks.review_task', task_id=task.id) }}" class="grid grid-cols-1 lg:grid-cols-5 gap-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="next" value="{{ url_for('tasks.reviews', project=project_filter) }}">
+                    <input type="text" name="note" placeholder="Review note (optional)" class="lg:col-span-3 bg-slate-100 dark:bg-border-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 text-xs">
+                    <button type="submit" name="decision" value="request_changes" class="px-3 py-2 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-400">Request Changes</button>
+                    <button type="submit" name="decision" value="approve" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500">Approve</button>
+                </form>
+            </article>
+        {% else %}
+            <p class="text-sm text-slate-500">No tasks are currently waiting for review.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm p-5">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-bold">Pending Attachment Reviews</h3>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">{{ pending_attachments|length }} files</span>
+    </div>
+
+    <div class="space-y-3">
+        {% for attachment in pending_attachments %}
+            <article class="border border-slate-200 dark:border-border-dark rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="text-sm font-bold">{{ attachment.original_name }} <span class="text-xs text-slate-500">(v{{ attachment.version }})</span></p>
+                    <p class="text-xs text-slate-500 mt-1">Task: {{ attachment.task.title if attachment.task else 'Unknown' }} • {{ attachment.task.project.name if attachment.task and attachment.task.project else 'No project' }}</p>
+                    <p class="text-xs text-slate-500">Uploaded by {{ attachment.uploader.username if attachment.uploader else 'Unknown' }} on {{ attachment.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ url_for('tasks.detail', task_id=attachment.task_id, next=url_for('tasks.reviews', project=project_filter)) }}" class="px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark text-xs font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Open Task</a>
+                    {% if current_user.id != attachment.uploaded_by %}
+                        <form method="post" action="{{ url_for('tasks.approve_attachment', task_id=attachment.task_id, attachment_id=attachment.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500">Approve</button>
+                        </form>
+                        <form method="post" action="{{ url_for('tasks.reject_attachment', task_id=attachment.task_id, attachment_id=attachment.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-bold hover:bg-red-500">Reject</button>
+                        </form>
+                    {% else %}
+                        <span class="px-3 py-2 text-xs text-slate-400 italic">Cannot review own upload</span>
+                    {% endif %}
+                </div>
+            </article>
+        {% else %}
+            <p class="text-sm text-slate-500">No pending attachment reviews.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

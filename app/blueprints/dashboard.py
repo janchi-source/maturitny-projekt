@@ -1,25 +1,79 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template
-from flask_login import login_required
+from flask import Blueprint, render_template, request
+from flask_login import current_user, login_required
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
 
+from ..extensions import db
 from ..models.document import Document
+from ..models.planning import ProjectMembership
 from ..models.project import Project, ProjectStatus
 from ..models.task import Task, TaskPriority, TaskStatus
+from ..models.user import user_has_right
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+
+@dashboard_bp.route("/search")
+@login_required
+def search():
+    q = request.args.get("q", "").strip()
+
+    projects = []
+    tasks = []
+    documents = []
+    visible_project_ids = _visible_project_ids_query()
+
+    if q:
+        pattern = f"%{q}%"
+        projects = (
+            Project.query
+            .filter(or_(Project.name.ilike(pattern), Project.description.ilike(pattern)))
+            .filter(Project.id.in_(visible_project_ids))
+            .order_by(Project.updated_at.desc())
+            .limit(5)
+            .all()
+        )
+        tasks = (
+            Task.query.options(joinedload(Task.assignee), joinedload(Task.project))
+            .filter(or_(Task.title.ilike(pattern), Task.description.ilike(pattern)))
+            .filter(Task.project_id.in_(visible_project_ids))
+            .order_by(Task.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        documents = (
+            Document.query.options(joinedload(Document.project), joinedload(Document.uploader))
+            .filter(or_(Document.original_name.ilike(pattern), Document.extracted_text.ilike(pattern)))
+            .filter(Document.project_id.in_(visible_project_ids))
+            .order_by(Document.created_at.desc())
+            .limit(5)
+            .all()
+        )
+
+    return render_template(
+        "dashboard/search.html",
+        q=q,
+        projects=projects,
+        tasks=tasks,
+        documents=documents,
+        total_results=len(projects) + len(tasks) + len(documents),
+    )
 
 
 @dashboard_bp.route("/")
 @login_required
 def index():
     now = datetime.now(timezone.utc).replace(tzinfo=None)
+    today_label = now.strftime("%d %b %Y")
     soon_threshold = now + timedelta(days=7)
+    visible_project_ids = _visible_project_ids_query()
 
-    active_project_count = Project.query.filter(Project.status == ProjectStatus.ACTIVE).count()
+    active_project_count = Project.query.filter(Project.id.in_(visible_project_ids), Project.status == ProjectStatus.ACTIVE).count()
     upcoming_deadline_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.due_date.isnot(None),
         Task.due_date >= now,
         Task.due_date <= soon_threshold,
@@ -31,12 +85,14 @@ def index():
     week_start = now - timedelta(days=7)
 
     overdue_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.due_date.isnot(None),
         Task.due_date < now,
         Task.status != TaskStatus.DONE,
     ).count()
 
     due_soon_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.due_date.isnot(None),
         Task.due_date >= now,
         Task.due_date <= tomorrow_end,
@@ -44,6 +100,7 @@ def index():
     ).count()
 
     due_this_week_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.due_date.isnot(None),
         Task.due_date > tomorrow_end,
         Task.due_date <= week_end,
@@ -51,11 +108,13 @@ def index():
     ).count()
 
     done_recently_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.status == TaskStatus.DONE,
         Task.created_at >= week_start,
     ).count()
 
     high_no_due_count = Task.query.filter(
+        Task.project_id.in_(visible_project_ids),
         Task.priority.in_([TaskPriority.HIGH, TaskPriority.CRITICAL]),
         Task.due_date.is_(None),
         Task.status != TaskStatus.DONE,
@@ -127,7 +186,7 @@ def index():
     ai_insight_count = len(ai_insights)
 
     projects = (
-        Project.query.filter(Project.status == ProjectStatus.ACTIVE)
+        Project.query.filter(Project.id.in_(visible_project_ids), Project.status == ProjectStatus.ACTIVE)
         .options(subqueryload(Project.tasks).joinedload(Task.assignee))
         .order_by(Project.updated_at.desc())
         .limit(3)
@@ -174,12 +233,14 @@ def index():
 
     recent_tasks = (
         Task.query.options(joinedload(Task.assignee))
+        .filter(Task.project_id.in_(visible_project_ids))
         .order_by(Task.created_at.desc())
         .limit(3)
         .all()
     )
     recent_documents = (
         Document.query.options(joinedload(Document.uploader))
+        .filter(Document.project_id.in_(visible_project_ids))
         .order_by(Document.created_at.desc())
         .limit(3)
         .all()
@@ -190,10 +251,24 @@ def index():
         active_project_count=active_project_count,
         upcoming_deadline_count=upcoming_deadline_count,
         ai_insight_count=ai_insight_count,
+        today_label=today_label,
         top_projects=project_rows,
         recent_tasks=recent_tasks,
         recent_documents=recent_documents,
         ai_insights=ai_insights,
         TaskStatus=TaskStatus,
         TaskPriority=TaskPriority,
+    )
+
+
+def _visible_project_ids_query():
+    if user_has_right(current_user, "view_all_projects"):
+        return db.session.query(Project.id)
+
+    membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+    return db.session.query(Project.id).filter(
+        or_(
+            Project.owner_id == current_user.id,
+            Project.id.in_(membership_project_ids),
+        )
     )

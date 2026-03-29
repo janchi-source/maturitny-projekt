@@ -2,13 +2,16 @@ import re
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 from sqlalchemy.orm import defer
 
 from ..extensions import db
 from ..models.ai_chat import ChatMessage, ChatMessageRole, ChatSession
 from ..models.document import Document
+from ..models.planning import ProjectMembership
 from ..models.project import Project
 from ..models.task import Task
+from ..models.user import user_has_right
 from ..services.ai_service import AIService
 
 _MENTION_RE = re.compile(r'@\[(doc|project|task):(\d+):([^\]]+)\]')
@@ -36,9 +39,11 @@ def index():
         .order_by(ChatSession.created_at.desc())
         .all()
     )
+    visible_project_ids = _visible_project_ids_query()
     documents = (
         Document.query
         .options(defer(Document.extracted_text))
+        .filter(Document.project_id.in_(visible_project_ids))
         .order_by(Document.created_at.desc())
         .all()
     )
@@ -58,6 +63,11 @@ def create_session():
     document_id_raw = request.form.get("document_id", "").strip()
     document_id = int(document_id_raw) if document_id_raw.isdigit() else None
 
+    if document_id is not None:
+        document = Document.query.get_or_404(document_id)
+        if not _can_access_project(document.project_id):
+            return redirect(url_for("ai_chat.index"))
+
     session = ChatSession(title=title, document_id=document_id, user_id=current_user.id)
     db.session.add(session)
     db.session.commit()
@@ -74,9 +84,11 @@ def get_session(session_id):
         .order_by(ChatSession.created_at.desc())
         .all()
     )
+    visible_project_ids = _visible_project_ids_query()
     documents = (
         Document.query
         .options(defer(Document.extracted_text))
+        .filter(Document.project_id.in_(visible_project_ids))
         .order_by(Document.created_at.desc())
         .all()
     )
@@ -95,10 +107,12 @@ def mention_autocomplete():
     q = request.args.get("q", "").strip()
     pattern = f"%{q}%"
     results = []
+    visible_project_ids = _visible_project_ids_query()
 
     docs = (
         Document.query
         .options(defer(Document.extracted_text))
+        .filter(Document.project_id.in_(visible_project_ids))
         .filter(Document.original_name.ilike(pattern))
         .order_by(Document.created_at.desc())
         .limit(5)
@@ -112,6 +126,7 @@ def mention_autocomplete():
 
     projects = (
         Project.query
+        .filter(Project.id.in_(visible_project_ids))
         .filter(Project.name.ilike(pattern))
         .order_by(Project.updated_at.desc())
         .limit(5)
@@ -125,6 +140,7 @@ def mention_autocomplete():
 
     tasks = (
         Task.query
+        .filter(Task.project_id.in_(visible_project_ids))
         .filter(Task.title.ilike(pattern))
         .order_by(Task.created_at.desc())
         .limit(5)
@@ -199,5 +215,28 @@ def delete_session(session_id):
 @login_required
 def summarize_document(doc_id):
     document = Document.query.get_or_404(doc_id)
+    if not _can_access_project(document.project_id):
+        return jsonify({"success": False, "error": "Forbidden"}), 403
     summary = ai_service.summarize(document.extracted_text or "")
     return jsonify({"success": True, "document_id": doc_id, "summary": summary})
+
+
+def _visible_project_ids_query():
+    if user_has_right(current_user, "view_all_projects"):
+        return db.session.query(Project.id)
+
+    membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+    return db.session.query(Project.id).filter(
+        or_(
+            Project.owner_id == current_user.id,
+            Project.id.in_(membership_project_ids),
+        )
+    )
+
+
+def _can_access_project(project_id):
+    if user_has_right(current_user, "view_all_projects"):
+        return True
+    if Project.query.filter_by(id=project_id, owner_id=current_user.id).first() is not None:
+        return True
+    return ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first() is not None

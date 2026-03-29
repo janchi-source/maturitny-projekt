@@ -9,7 +9,7 @@
         <p class="text-slate-500 dark:text-slate-400 font-medium">Members, roles, and workload overview</p>
     </div>
     {% if is_admin %}
-    <a href="{{ url_for('team.manage_roles') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Manage Role Names</a>
+    <a href="{{ url_for('team.manage_roles') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Manage Roles</a>
     {% endif %}
 </div>
 
@@ -34,8 +34,8 @@
                     <td class="px-6 py-4 font-bold">{{ member.username }}</td>
                     <td class="px-6 py-4">{{ member.email }}</td>
                     <td class="px-6 py-4">
-                        <span class="px-2 py-1 rounded text-[10px] font-black uppercase {% if member.role.value == 'admin' %}bg-primary/10 text-primary{% elif member.role.value == 'leader' %}bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500{% else %}bg-slate-100 dark:bg-border-dark text-slate-600 dark:text-slate-300{% endif %}">
-                            {{ role_label_map.get(member.role.value, member.role.value) }}
+                        <span class="px-2 py-1 rounded text-[10px] font-black uppercase {% if row.role_key == 'admin' %}bg-primary/10 text-primary{% elif row.role_key == 'basic' %}bg-slate-100 dark:bg-border-dark text-slate-600 dark:text-slate-300{% else %}bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-500{% endif %}">
+                            {{ row.role_label }}
                         </span>
                     </td>
                     <td class="px-6 py-4 text-right">{{ row.project_count }}</td>

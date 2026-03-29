@@ -29,7 +29,7 @@
     <div class="w-full max-w-lg bg-surface-dark rounded-xl border border-border-dark shadow-sm p-6 sm:p-8">
         <div class="mb-6 text-center">
             <h1 class="text-2xl font-bold tracking-tight">Create your account</h1>
-            <p class="text-sm text-slate-400 mt-1">Join ProMat workspace</p>
+            <p class="text-sm text-slate-400 mt-1">Join ProMat workspace as a basic member</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -47,20 +47,15 @@
         <form method="post" action="{{ url_for('auth.register') }}" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label for="username" class="block text-sm font-semibold mb-1">Username</label>
-                    <input id="username" name="username" type="text" required class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary" placeholder="Your name">
-                </div>
+            <div>
+                <label for="username" class="block text-sm font-semibold mb-1">Username</label>
+                <input id="username" name="username" type="text" required class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary" placeholder="Your name">
+            </div>
 
-                <div>
-                    <label for="role" class="block text-sm font-semibold mb-1">Role</label>
-                    <select id="role" name="role" class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 focus:ring-2 focus:ring-primary">
-                        {% for role_value in role_values %}
-                            <option value="{{ role_value }}">{{ role_label_map.get(role_value, role_value|title) }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <div>
+                <label for="invitation_code" class="block text-sm font-semibold mb-1">Invitation Code</label>
+                <input id="invitation_code" name="invitation_code" type="text" required class="w-full bg-border-dark border border-border-dark rounded-lg px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-primary" placeholder="Enter your invitation code">
+                <p class="text-xs text-slate-400 mt-1">Required to register a basic-role account.</p>
             </div>
 
             <div>

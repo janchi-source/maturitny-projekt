@@ -10,6 +10,9 @@
     </div>
     <div class="flex gap-2">
         <a href="{{ url_for('tasks.notifications') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Notifications</a>
+        {% if can_review_queue %}
+            <a href="{{ url_for('tasks.reviews') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Reviews</a>
+        {% endif %}
         <a href="{{ url_for('tasks.sprints') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Sprints</a>
         <a href="{{ url_for('tasks.reports') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Reports</a>
         <a href="{{ url_for('tasks.integrations') }}" class="px-4 py-2 border border-slate-200 dark:border-border-dark rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-border-dark/50">Integrations</a>

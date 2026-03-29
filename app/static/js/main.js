@@ -118,9 +118,36 @@ function initNotifications() {
     });
 }
 
+function initProfileMenu() {
+    const toggleButton = document.querySelector("[data-profile-toggle]");
+    const menu = document.querySelector("[data-profile-menu]");
+
+    if (!toggleButton || !menu) {
+        return;
+    }
+
+    toggleButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        menu.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (event) => {
+        if (!menu.contains(event.target) && !toggleButton.contains(event.target)) {
+            menu.classList.add("hidden");
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            menu.classList.add("hidden");
+        }
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     initDarkMode();
     initSidebar();
     initModals();
     initNotifications();
+    initProfileMenu();
 });

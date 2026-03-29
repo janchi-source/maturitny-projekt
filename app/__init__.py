@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from flask import Flask, render_template
+from flask import Flask, g, render_template
 from flask_login import current_user
 from sqlalchemy import event
+from werkzeug.security import generate_password_hash
 
 from config import Config
 
@@ -16,6 +17,13 @@ from .blueprints.tasks import tasks_bp
 from .blueprints.team import team_bp
 from .extensions import cache, csrf, db, login_manager
 from .models import init_db
+
+try:
+    from .blueprints.workspaces import workspaces_bp
+except ModuleNotFoundError as exc:
+    if exc.name != "app.blueprints.workspaces":
+        raise
+    workspaces_bp = None
 
 
 def create_app(config_class=Config):
@@ -48,12 +56,35 @@ def create_app(config_class=Config):
     app.register_blueprint(ai_chat_bp, url_prefix="/ai-chat")
     app.register_blueprint(team_bp, url_prefix="/team")
     app.register_blueprint(settings_bp, url_prefix="/settings")
+    if workspaces_bp is not None:
+        app.register_blueprint(workspaces_bp, url_prefix="/workspaces")
+
+    @app.context_processor
+    def inject_workspace_context():
+        if current_user.is_authenticated:
+            try:
+                from .models.workspace import WorkspaceMembership
+            except ModuleNotFoundError as exc:
+                if exc.name != "app.models.workspace":
+                    raise
+                return {"user_has_workspace": False}
+
+            if not hasattr(g, "_has_workspace"):
+                g._has_workspace = (
+                    WorkspaceMembership.query.filter_by(user_id=current_user.id).first() is not None
+                )
+            return {"user_has_workspace": g._has_workspace}
+        return {"user_has_workspace": False}
 
     @app.context_processor
     def inject_role_label_map():
-        from .models.user import RoleLabelSetting, UserRole
-        custom = {s.role_value: s.label for s in RoleLabelSetting.query.all()}
-        role_label_map = {role.value: custom.get(role.value, role.value.capitalize()) for role in UserRole}
+        role_label_map = {
+            "admin": "Admin",
+            "animator": "Basic",
+            "leader": "Basic",
+            "coordinator": "Basic",
+            "secretariat": "Basic",
+        }
         return {"role_label_map": role_label_map}
 
     @app.context_processor
@@ -78,6 +109,7 @@ def create_app(config_class=Config):
 
     with app.app_context():
         init_db()
+        ensure_builtin_admin(app)
 
     return app
 
@@ -90,3 +122,52 @@ def register_error_handlers(app):
     @app.errorhandler(500)
     def server_error(error):
         return render_template("errors/500.html"), 500
+
+
+def ensure_builtin_admin(app):
+    from .models.user import ManagedRole, User, UserManagedRole, UserRole
+
+    username = str(app.config.get("BUILTIN_ADMIN_USERNAME", "")).strip()
+    email = str(app.config.get("BUILTIN_ADMIN_EMAIL", "")).strip().lower()
+    password = str(app.config.get("BUILTIN_ADMIN_PASSWORD", "")).strip()
+
+    if not username or not email or not password:
+        return
+
+    admin_role = ManagedRole.query.filter_by(key="admin").first()
+    if admin_role is None:
+        return
+
+    user_by_email = User.query.filter_by(email=email).first()
+    user_by_username = User.query.filter_by(username=username).first()
+    user = user_by_email or user_by_username
+
+    if user is None:
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            role=UserRole.ADMIN,
+        )
+        db.session.add(user)
+        db.session.flush()
+    else:
+        # Keep configured identity in sync when it does not collide with another user.
+        if user.email != email and (user_by_email is None or user_by_email.id == user.id):
+            user.email = email
+        if user.username != username and (user_by_username is None or user_by_username.id == user.id):
+            user.username = username
+
+        # Keep built-in admin credentials deterministic from config.
+        user.password_hash = generate_password_hash(password)
+
+    assignment = UserManagedRole.query.filter_by(user_id=user.id).first()
+    if assignment is None:
+        db.session.add(UserManagedRole(user_id=user.id, role_id=admin_role.id))
+    else:
+        assignment.role_id = admin_role.id
+
+    if user.role != UserRole.ADMIN:
+        user.role = UserRole.ADMIN
+
+    db.session.commit()

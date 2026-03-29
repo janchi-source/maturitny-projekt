@@ -20,7 +20,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.utils import secure_filename
 
@@ -41,7 +41,7 @@ from ..models.planning import (
 from ..cache_helpers import get_labels_dropdown, get_projects_dropdown, get_users_dropdown
 from ..models.project import Project
 from ..models.task import AttachmentStatus, Task, TaskActivity, TaskAttachment, TaskChecklistItem, TaskLabel, TaskPriority, TaskStatus
-from ..models.user import User
+from ..models.user import User, user_has_right
 
 
 tasks_bp = Blueprint("tasks", __name__)
@@ -57,6 +57,14 @@ def index():
     quick = request.args.get("quick", "").strip().lower()
 
     query = Task.query.options(joinedload(Task.assignee), joinedload(Task.labels), joinedload(Task.sprint))
+    if not user_has_right(current_user, "view_all_projects"):
+        membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+        query = query.filter(
+            or_(
+                Task.project.has(Project.owner_id == current_user.id),
+                Task.project_id.in_(membership_project_ids),
+            )
+        )
 
     if project_filter.isdigit():
         query = query.filter(Task.project_id == int(project_filter))
@@ -98,6 +106,7 @@ def index():
         label_filter=label_filter,
         quick=quick,
         status_values=[status.value for status in TaskStatus],
+        can_review_queue=_can_access_review_queue(),
     )
 
 
@@ -111,8 +120,19 @@ def kanban():
     active_project = None
     setting = None
 
+    if not user_has_right(current_user, "view_all_projects"):
+        membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+        query = query.filter(
+            or_(
+                Task.project.has(Project.owner_id == current_user.id),
+                Task.project_id.in_(membership_project_ids),
+            )
+        )
+
     if project_filter.isdigit():
         active_project = Project.query.get(int(project_filter))
+        if active_project and not _can_access_project(active_project.id):
+            abort(403)
         if active_project:
             query = query.filter(Task.project_id == active_project.id)
             setting = TaskBoardSetting.query.filter_by(project_id=active_project.id).first()
@@ -390,6 +410,7 @@ def detail(task_id):
         checklist_done=completion_done,
         checklist_total=completion_total,
         is_watching=current_watching,
+        can_submit_for_review=_can_submit_for_review(task),
         next_url=next_url,
     )
 
@@ -1176,6 +1197,117 @@ def reports():
     )
 
 
+@tasks_bp.route("/reviews")
+@login_required
+def reviews():
+    if not _can_access_review_queue():
+        abort(403)
+
+    project_filter = request.args.get("project", "").strip()
+
+    in_review_tasks = (
+        Task.query.options(joinedload(Task.project), joinedload(Task.assignee))
+        .filter(Task.status == TaskStatus.IN_REVIEW)
+        .order_by(Task.created_at.desc())
+        .all()
+    )
+    if project_filter.isdigit():
+        selected_project_id = int(project_filter)
+        in_review_tasks = [task for task in in_review_tasks if task.project_id == selected_project_id]
+
+    review_tasks = [task for task in in_review_tasks if _can_review_project(task.project_id)]
+
+    pending_attachments = (
+        TaskAttachment.query.options(
+            joinedload(TaskAttachment.task).joinedload(Task.project),
+            joinedload(TaskAttachment.uploader),
+        )
+        .filter(TaskAttachment.status == AttachmentStatus.PENDING)
+        .order_by(TaskAttachment.created_at.desc())
+        .all()
+    )
+    pending_attachments = [
+        attachment
+        for attachment in pending_attachments
+        if attachment.task and _can_review_project(attachment.task.project_id)
+    ]
+
+    return render_template(
+        "tasks/reviews.html",
+        review_tasks=review_tasks,
+        pending_attachments=pending_attachments,
+        projects=get_projects_dropdown(),
+        project_filter=project_filter,
+    )
+
+
+@tasks_bp.route("/<int:task_id>/review", methods=["POST"])
+@login_required
+def review_task(task_id):
+    task = Task.query.options(joinedload(Task.assignee)).get_or_404(task_id)
+    _require_review_access(task.project_id)
+
+    decision = request.form.get("decision", "").strip().lower()
+    note = request.form.get("note", "").strip()
+    next_url = request.form.get("next", "").strip()
+
+    if task.status != TaskStatus.IN_REVIEW:
+        flash("Only tasks in review can be processed here.", "error")
+        return redirect(next_url if next_url.startswith("/") else url_for("tasks.reviews"))
+
+    if decision == "approve":
+        task.status = TaskStatus.DONE
+        action_text = "approved"
+        message = f"Task '{task.title}' was approved."
+    elif decision == "request_changes":
+        task.status = TaskStatus.IN_PROGRESS
+        action_text = "sent back for changes"
+        message = f"Task '{task.title}' requires changes."
+    else:
+        flash("Invalid review decision.", "error")
+        return redirect(next_url if next_url.startswith("/") else url_for("tasks.reviews"))
+
+    details = f"Review {action_text}"
+    if note:
+        details = f"{details}: {note}"
+    _log_activity(task, "task_reviewed", details)
+
+    if task.assignee_id and task.assignee_id != current_user.id:
+        _notify_user(task.assignee_id, "Task review update", message, kind="review")
+
+    db.session.commit()
+    flash(f"Task {action_text}.", "success")
+    return redirect(next_url if next_url.startswith("/") else url_for("tasks.reviews"))
+
+
+@tasks_bp.route("/<int:task_id>/submit-review", methods=["POST"])
+@login_required
+def submit_for_review(task_id):
+    task = Task.query.options(joinedload(Task.assignee)).get_or_404(task_id)
+    _require_project_role(task.project_id, ProjectMembershipRole.MEMBER)
+
+    if not _can_submit_for_review(task):
+        abort(403)
+
+    next_url = request.form.get("next", "").strip()
+
+    if task.status in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
+        flash("Task is already in review or completed.", "info")
+        return redirect(next_url if next_url.startswith("/") else url_for("tasks.detail", task_id=task.id))
+
+    blockers = _unfinished_blockers(task)
+    if blockers:
+        flash("Task has unfinished dependencies and cannot be moved to review.", "error")
+        return redirect(next_url if next_url.startswith("/") else url_for("tasks.detail", task_id=task.id))
+
+    task.status = TaskStatus.IN_REVIEW
+    _log_activity(task, "review_requested", "Task submitted for review")
+    db.session.commit()
+
+    flash("Task sent to review queue.", "success")
+    return redirect(next_url if next_url.startswith("/") else url_for("tasks.detail", task_id=task.id))
+
+
 @tasks_bp.route("/integrations", methods=["GET", "POST"])
 @login_required
 def integrations():
@@ -1703,14 +1835,13 @@ def _run_automation_rules(task, changed_fields):
 
 
 def _require_project_role(project_id, required_role):
-    if current_user.role.value in {"admin", "owner"}:
+    if user_has_right(current_user, "view_all_projects"):
+        return
+
+    if Project.query.filter_by(id=project_id, owner_id=current_user.id).first() is not None:
         return
 
     membership = ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first()
-    has_memberships = ProjectMembership.query.filter_by(project_id=project_id).count() > 0
-
-    if not has_memberships:
-        return
     if not membership:
         abort(403)
 
@@ -1723,3 +1854,57 @@ def _require_project_role(project_id, required_role):
 
     if rank[membership.role] < rank[required_role]:
         abort(403)
+
+
+def _can_access_project(project_id):
+    if user_has_right(current_user, "view_all_projects"):
+        return True
+    if Project.query.filter_by(id=project_id, owner_id=current_user.id).first() is not None:
+        return True
+    return ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first() is not None
+
+
+def _can_review_project(project_id):
+    if user_has_right(current_user, "manage_projects"):
+        return True
+
+    if Project.query.filter_by(id=project_id, owner_id=current_user.id).first() is not None:
+        return True
+
+    membership = ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first()
+    return membership is not None and membership.role in {ProjectMembershipRole.MANAGER, ProjectMembershipRole.ADMIN}
+
+
+def _require_review_access(project_id):
+    if not _can_review_project(project_id):
+        abort(403)
+
+
+def _can_submit_for_review(task):
+    if user_has_right(current_user, "manage_projects"):
+        return True
+
+    if task.project and task.project.owner_id == current_user.id:
+        return True
+
+    if task.assignee_id == current_user.id:
+        return True
+
+    membership = ProjectMembership.query.filter_by(project_id=task.project_id, user_id=current_user.id).first()
+    return membership is not None and membership.role in {ProjectMembershipRole.MANAGER, ProjectMembershipRole.ADMIN}
+
+
+def _can_access_review_queue():
+    if user_has_right(current_user, "manage_projects"):
+        return True
+
+    if Project.query.filter_by(owner_id=current_user.id).first() is not None:
+        return True
+
+    return (
+        ProjectMembership.query.filter(
+            ProjectMembership.user_id == current_user.id,
+            ProjectMembership.role.in_([ProjectMembershipRole.MANAGER, ProjectMembershipRole.ADMIN]),
+        ).first()
+        is not None
+    )

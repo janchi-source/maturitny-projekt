@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Search | ProMat{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+    <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark p-6 shadow-sm">
+        <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Global Search</p>
+        {% if q %}
+            <h2 class="text-2xl font-black tracking-tight mt-2">Results for "{{ q }}"</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ total_results }} result{{ '' if total_results == 1 else 's' }} shown across projects, tasks, and documents (up to 5 per section).</p>
+        {% else %}
+            <h2 class="text-2xl font-black tracking-tight mt-2">Start searching</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Use the header search box to find projects, tasks, and documents.</p>
+        {% endif %}
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Projects</h3>
+                <span class="text-xs font-bold text-primary">{{ projects|length }}</span>
+            </div>
+            {% if projects %}
+                <ul class="divide-y divide-slate-100 dark:divide-border-dark">
+                    {% for project in projects %}
+                        <li>
+                            <a href="{{ url_for('projects.detail', project_id=project.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-border-dark/40 transition-colors">
+                                <p class="font-bold text-sm">{{ project.name }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ project.description or 'No description available.' }}</p>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% elif q %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">No projects matched your query.</p>
+            {% else %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">Enter a query to search projects.</p>
+            {% endif %}
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Tasks</h3>
+                <span class="text-xs font-bold text-primary">{{ tasks|length }}</span>
+            </div>
+            {% if tasks %}
+                <ul class="divide-y divide-slate-100 dark:divide-border-dark">
+                    {% for task in tasks %}
+                        <li>
+                            <a href="{{ url_for('tasks.detail', task_id=task.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-border-dark/40 transition-colors">
+                                <p class="font-bold text-sm">{{ task.title }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ task.project.name if task.project else 'No project' }}{% if task.assignee %} • {{ task.assignee.username }}{% endif %}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ task.description or 'No description available.' }}</p>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% elif q %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">No tasks matched your query.</p>
+            {% else %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">Enter a query to search tasks.</p>
+            {% endif %}
+        </section>
+
+        <section class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="px-5 py-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500">Documents</h3>
+                <span class="text-xs font-bold text-primary">{{ documents|length }}</span>
+            </div>
+            {% if documents %}
+                <ul class="divide-y divide-slate-100 dark:divide-border-dark">
+                    {% for document in documents %}
+                        <li>
+                            <a href="{{ url_for('documents.detail', document_id=document.id) }}" class="block px-5 py-4 hover:bg-slate-50 dark:hover:bg-border-dark/40 transition-colors">
+                                <p class="font-bold text-sm">{{ document.original_name }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ document.project.name if document.project else 'No project' }}{% if document.uploader %} • {{ document.uploader.username }}{% endif %}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{{ document.extracted_text or 'No extracted text available.' }}</p>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% elif q %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">No documents matched your query.</p>
+            {% else %}
+                <p class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">Enter a query to search documents.</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

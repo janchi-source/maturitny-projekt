@@ -24,7 +24,9 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
     {{ stats_card('Active Projects', active_project_count, 'folder_open', '+0%', 'trending_up', 'text-primary', 'text-emerald-500') }}
     {{ stats_card('Upcoming Deadlines', upcoming_deadline_count, 'event_upcoming', '+0%', 'warning', 'text-orange-500', 'text-orange-500') }}
-    {{ stats_card('AI Insights Shared', ai_insight_count, 'auto_awesome', '+0%', 'trending_up', 'text-indigo-500', 'text-emerald-500') }}
+    <div class="bg-white dark:bg-surface-dark rounded-xl p-6 border border-slate-200 dark:border-border-dark shadow-sm flex items-center justify-center">
+        <p class="text-3xl font-bold tracking-tight">{{ today_label }}</p>
+    </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

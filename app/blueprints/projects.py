@@ -1,15 +1,18 @@
+from collections import defaultdict
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
 
 from ..cache_helpers import get_users_dropdown
 from ..extensions import db
 from ..models.document import Document
-from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher
+from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher, TaskBoardSetting
 from ..models.project import Project, ProjectStatus
 from ..models.task import Task, TaskPriority, TaskStatus
 from ..models.user import User
-from ..models.user import UserRole
+from ..models.user import user_has_right
 
 
 projects_bp = Blueprint("projects", __name__)
@@ -22,6 +25,15 @@ def index():
     status_filter = request.args.get("status", "").strip().lower()
 
     query = Project.query
+    if not user_has_right(current_user, "view_all_projects"):
+        membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+        query = query.filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Project.id.in_(membership_project_ids),
+            )
+        )
+
     if search:
         query = query.filter(Project.name.ilike(f"%{search}%"))
 
@@ -80,6 +92,13 @@ def create():
             owner_id=current_user.id,
         )
         db.session.add(project)
+
+        membership = ProjectMembership(
+            project=project,
+            user_id=current_user.id,
+            role=ProjectMembershipRole.ADMIN,
+        )
+        db.session.add(membership)
         db.session.commit()
 
         flash("Project created successfully.", "success")
@@ -99,6 +118,7 @@ def detail(project_id):
     project = (
         Project.query.options(
             subqueryload(Project.tasks).joinedload(Task.assignee),
+            subqueryload(Project.tasks).subqueryload(Task.labels),
             subqueryload(Project.documents).joinedload(Document.uploader),
             subqueryload(Project.memberships).joinedload(ProjectMembership.user),
             subqueryload(Project.watchers).joinedload(ProjectWatcher.user),
@@ -107,8 +127,9 @@ def detail(project_id):
         )
         .get_or_404(project_id)
     )
+    _require_project_access(project)
     active_tab = request.args.get("tab", "tasks").strip().lower()
-    if active_tab not in {"tasks", "documents", "team"}:
+    if active_tab not in {"tasks", "kanban", "documents", "team"}:
         active_tab = "tasks"
 
     team_map = {}
@@ -131,12 +152,35 @@ def detail(project_id):
     membership_map = {membership.user_id: membership for membership in project.memberships}
     is_watching = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first() is not None
     watchers = [watch.user for watch in project.watchers if watch.user]
+    sorted_tasks = sorted(project.tasks, key=lambda task: task.created_at, reverse=True)
+
+    board_setting = TaskBoardSetting.query.filter_by(project_id=project.id).first()
+    board_labels = {
+        "todo": board_setting.todo_label if board_setting else "To Do",
+        "in_progress": board_setting.in_progress_label if board_setting else "In Progress",
+        "in_review": board_setting.in_review_label if board_setting else "In Review",
+        "done": board_setting.done_label if board_setting else "Done",
+    }
+    wip_limits = {
+        "todo": board_setting.wip_todo if board_setting else None,
+        "in_progress": board_setting.wip_in_progress if board_setting else None,
+        "in_review": board_setting.wip_in_review if board_setting else None,
+        "done": board_setting.wip_done if board_setting else None,
+    }
+    kanban_columns = defaultdict(list)
+    for status in TaskStatus:
+        kanban_columns[status] = []
+    for task in sorted_tasks:
+        kanban_columns[task.status].append(task)
 
     return render_template(
         "projects/detail.html",
         project=project,
         active_tab=active_tab,
-        tasks=sorted(project.tasks, key=lambda task: task.created_at, reverse=True),
+        tasks=sorted_tasks,
+        kanban_columns=dict(kanban_columns),
+        board_labels=board_labels,
+        wip_limits=wip_limits,
         documents=sorted(project.documents, key=lambda document: document.created_at, reverse=True),
         team_members=team_members,
         users_for_membership=get_users_dropdown(),
@@ -149,6 +193,7 @@ def detail(project_id):
         users=get_users_dropdown(),
         priority_values=[p.value for p in TaskPriority],
         status_values=[s.value for s in TaskStatus],
+        TaskStatus=TaskStatus,
     )
 
 
@@ -156,6 +201,7 @@ def detail(project_id):
 @login_required
 def toggle_watch(project_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_access(project)
     watcher = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first()
 
     if watcher:
@@ -173,6 +219,7 @@ def toggle_watch(project_id):
 @login_required
 def upsert_member(project_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_access(project)
     _require_project_manager()
 
     user_id_raw = request.form.get("user_id", "").strip()
@@ -204,6 +251,7 @@ def upsert_member(project_id):
 @login_required
 def remove_member(project_id, user_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_access(project)
     _require_project_manager()
 
     membership = ProjectMembership.query.filter_by(project_id=project.id, user_id=user_id).first()
@@ -221,6 +269,7 @@ def remove_member(project_id, user_id):
 @login_required
 def edit(project_id):
     project = Project.query.get_or_404(project_id)
+    _require_project_access(project)
 
     if request.method == "POST":
         name = request.form.get("name", "").strip()
@@ -268,6 +317,7 @@ def edit(project_id):
 def delete(project_id):
     _require_project_manager()
     project = Project.query.get_or_404(project_id)
+    _require_project_access(project)
 
     db.session.delete(project)
     db.session.commit()
@@ -278,9 +328,20 @@ def delete(project_id):
 def _can_manage_projects():
     if not current_user.is_authenticated:
         return False
-    return current_user.role in {UserRole.ADMIN, UserRole.LEADER}
+    return user_has_right(current_user, "manage_projects")
 
 
 def _require_project_manager():
     if not _can_manage_projects():
+        abort(403)
+
+
+def _require_project_access(project):
+    if user_has_right(current_user, "view_all_projects"):
+        return
+    if project.owner_id == current_user.id:
+        return
+
+    membership = ProjectMembership.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    if membership is None:
         abort(403)

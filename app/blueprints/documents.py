@@ -1,12 +1,15 @@
 from pathlib import Path
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, send_from_directory, url_for
+from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, send_from_directory, url_for
 from flask_login import current_user, login_required
+from sqlalchemy import or_
 
 from ..cache_helpers import get_projects_dropdown
+from ..models.planning import ProjectMembership
 from ..extensions import db
 from ..models.document import Document, DocumentType
 from ..models.project import Project
+from ..models.user import user_has_right
 from ..services.document_service import process_upload
 
 
@@ -22,6 +25,15 @@ def index():
     search = request.args.get("search", "").strip()
 
     query = Document.query
+    if not user_has_right(current_user, "view_all_projects"):
+        membership_project_ids = db.session.query(ProjectMembership.project_id).filter_by(user_id=current_user.id)
+        query = query.join(Project).filter(
+            or_(
+                Project.owner_id == current_user.id,
+                Document.project_id.in_(membership_project_ids),
+            )
+        )
+
     if project_filter.isdigit():
         query = query.filter(Document.project_id == int(project_filter))
 
@@ -68,11 +80,16 @@ def upload():
             flash("Please select a valid project.", "error")
             return render_template("documents/upload.html", projects=projects)
 
+        project_id = int(project_id_raw)
+        if not _can_access_project(project_id):
+            flash("You do not have access to the selected project.", "error")
+            return render_template("documents/upload.html", projects=projects)
+
         tags = [part.strip() for part in tags_raw.split(",") if part.strip()]
         try:
             document = process_upload(
                 file=file,
-                project_id=int(project_id_raw),
+                project_id=project_id,
                 user_id=current_user.id,
                 tags=tags,
                 upload_root=current_app.config.get("UPLOAD_FOLDER", "uploads"),
@@ -94,6 +111,8 @@ def upload():
 @login_required
 def detail(document_id):
     document = Document.query.get_or_404(document_id)
+    if not _can_access_project(document.project_id):
+        abort(403)
     return render_template("documents/detail.html", document=document)
 
 
@@ -101,6 +120,8 @@ def detail(document_id):
 @login_required
 def download(document_id):
     document = Document.query.get_or_404(document_id)
+    if not _can_access_project(document.project_id):
+        abort(403)
     upload_root = Path(current_app.config.get("UPLOAD_FOLDER", "uploads"))
     return send_from_directory(upload_root, document.filename, as_attachment=True, download_name=document.original_name)
 
@@ -109,6 +130,8 @@ def download(document_id):
 @login_required
 def delete(document_id):
     document = Document.query.get_or_404(document_id)
+    if not _can_access_project(document.project_id):
+        abort(403)
     upload_root = Path(current_app.config.get("UPLOAD_FOLDER", "uploads"))
     file_path = upload_root / document.filename
     if file_path.exists():
@@ -121,3 +144,11 @@ def delete(document_id):
     db.session.commit()
     flash("Document deleted.", "info")
     return redirect(url_for("documents.index"))
+
+
+def _can_access_project(project_id):
+    if user_has_right(current_user, "view_all_projects"):
+        return True
+    if Project.query.filter_by(id=project_id, owner_id=current_user.id).first() is not None:
+        return True
+    return ProjectMembership.query.filter_by(project_id=project_id, user_id=current_user.id).first() is not None

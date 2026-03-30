@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
@@ -14,6 +14,13 @@ from ..models.user import user_has_right
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+
+@dashboard_bp.route("/")
+def landing():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard.index"))
+    return render_template("landing.html")
 
 
 @dashboard_bp.route("/search")
@@ -63,7 +70,7 @@ def search():
     )
 
 
-@dashboard_bp.route("/")
+@dashboard_bp.route("/dashboard")
 @login_required
 def index():
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -194,6 +201,7 @@ def index():
     )
     project_rows = []
     for project in projects:
+        project_progress = _calculate_project_progress(project.tasks)
         due_label = "Due soon"
         project_due_dates = [task.due_date for task in project.tasks if task.due_date]
         if project_due_dates:
@@ -206,9 +214,9 @@ def index():
             else:
                 due_label = f"Due in {days_left} days"
 
-        if project.progress >= 80:
+        if project_progress >= 80:
             dot_color = "bg-emerald-500"
-        elif project.progress >= 50:
+        elif project_progress >= 50:
             dot_color = "bg-primary"
         else:
             dot_color = "bg-orange-500"
@@ -224,7 +232,7 @@ def index():
             {
                 "id": project.id,
                 "name": project.name,
-                "progress": project.progress,
+                "progress": project_progress,
                 "due_label": due_label,
                 "dot_color": dot_color,
                 "team": team_names,
@@ -272,3 +280,24 @@ def _visible_project_ids_query():
             Project.id.in_(membership_project_ids),
         )
     )
+
+
+def _calculate_project_progress(tasks):
+    if not tasks:
+        return 0
+
+    status_defaults = {
+        TaskStatus.TODO: 0,
+        TaskStatus.IN_PROGRESS: 50,
+        TaskStatus.IN_REVIEW: 75,
+        TaskStatus.DONE: 100,
+    }
+
+    total = 0
+    for task in tasks:
+        # Keep explicit per-task progress when present, but never allow DONE to show below 100%.
+        explicit_progress = max(0, min(int(getattr(task, "progress", 0) or 0), 100))
+        status_progress = status_defaults.get(task.status, 0)
+        total += max(explicit_progress, status_progress)
+
+    return round(total / len(tasks))

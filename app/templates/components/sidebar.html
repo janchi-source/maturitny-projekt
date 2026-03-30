@@ -19,7 +19,7 @@
         </div>
 
         <nav class="flex flex-col gap-1 px-3">
-            <a href="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint == 'dashboard.index' %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
+            <a href="{{ url_for('dashboard.index') }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg {% if endpoint == 'dashboard.index' %}sidebar-item-active text-primary{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %} transition-colors">
                 <span class="material-symbols-outlined">dashboard</span>
                 <p class="text-sm font-semibold">Dashboard</p>
             </a>

@@ -1,16 +1,95 @@
 % ── Dizajn a architektúra ─────────────────────────────────────
 \chapter{Dizajn a architektúra}
 
-% Doplňte krátky úvodný text kapitoly.
+        Táto kapitola popisuje celkovú architektúru systému, štruktúru zdrojového kódu
+a~návrh používateľského rozhrania. Správny architektonický návrh je základom udržiavateľnej
+a~rozšíriteľnej aplikácie.
 
 \section{Architektúra systému}
 
-% Doplňte popis celkovej architektúry (napr. MVC, klient-server, vrstvy aplikácie).
+        Aplikácia je navrhnutá ako klasická klient-server webová aplikácia s~trojvrstvovou
+architektúrou:
+
+\begin{itemize}
+  \item \textbf{Prezentačná vrstva} -- HTML/CSS/JavaScript šablóny (Jinja2), ktoré
+        renderuje Flask a~zasiela klientovi cez HTTPS.
+  \item \textbf{Aplikačná vrstva} -- Flask blueprinty obsahujúce business logiku:
+        spracovanie požiadaviek, autorizáciu, komunikáciu s~AI~modelom a~extrakciu
+        textu z~dokumentov.
+  \item \textbf{Dátová vrstva} -- SQLAlchemy ORM modely komunikujúce s~SQLite
+        databázou. Súbory dokumentov sú uložené na filesystéme servera.
+\end{itemize}
+
+        Kód je rozdelený do samostatných Flask blueprintov podľa funkčných celkov:
+\texttt{auth}, \texttt{dashboard}, \texttt{projects}, \texttt{tasks}, \texttt{documents},
+\texttt{ai\_chat}, \texttt{team} a~\texttt{settings}. Každý blueprint obsahuje vlastné
+routes, šablóny a~pomocné funkcie, čo umožňuje nezávislý vývoj a~testovanie jednotlivých
+modulov.
 
 \section{Štruktúra projektu}
 
-% Doplňte popis adresárovej štruktúry a organizácie zdrojového kódu.
+        Zdrojový kód aplikácie je organizovaný nasledovne:
+
+\begin{itemize}
+  \item \texttt{app/} -- hlavný adresár aplikácie
+  \begin{itemize}
+    \item \texttt{blueprints/} -- jednotlivé moduly (auth, projects, tasks, \ldots)
+    \item \texttt{models/} -- SQLAlchemy modely databázových entít
+    \item \texttt{services/} -- servisná vrstva (extrakcia textu, AI~komunikácia)
+    \item \texttt{templates/} -- Jinja2 HTML šablóny
+    \item \texttt{static/} -- CSS, JavaScript, obrázky
+  \end{itemize}
+  \item \texttt{config.py} -- konfigurácia aplikácie (databáza, AI, bezpečnosť)
+  \item \texttt{run.py} -- vstupný bod pre spustenie servera
+  \item \texttt{requirements.txt} -- zoznam Python závislostí
+  \item \texttt{uploads/} -- adresár pre nahrané dokumenty
+  \item \texttt{instance/promat.db} -- SQLite databázový súbor
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.7\textwidth]{images/struktura_projektu.png}
+  \fbox{\parbox{0.65\textwidth}{\centering\vspace{2.5cm}
+    [TBD]
+  \vspace{2.5cm}}}
+  \caption{Adresárová štruktúra projektu}
+  \label{fig:struktura}
+\end{figure}
 
 \section{Používateľské rozhranie}
 
-% Doplňte popis návrhu UI, wireframov alebo screenshotov rozhrania.
+        Používateľské rozhranie je navrhnuté s~dôrazom na jednoduchosť a~prehľadnosť.
+Každá stránka obsahuje fixný bočný panel (sidebar) s~navigáciou a~hlavný obsahový
+priestor. Aplikácia podporuje svetlý aj tmavý režim, pričom používateľova voľba je
+uložená lokálne.
+
+        Rozhranie obsahuje nasledujúce kľúčové obrazovky:
+
+\begin{itemize}
+  \item \textbf{Dashboard} -- prehľad projektov, úloh a~aktivity
+  \item \textbf{Zoznam projektov} -- prehľad všetkých projektov s~filtráciou
+  \item \textbf{Detail projektu} -- úlohy, dokumenty a~členovia projektu
+  \item \textbf{Kanban tabuľa} -- drag-and-drop zobrazenie úloh podľa stavu
+  \item \textbf{Dokumenty} -- nahrávanie, prezeranie a~AI~chat nad dokumentmi
+  \item \textbf{AI~chat} -- konverzačné rozhranie pre prácu s~dokumentmi
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{images/ui_dashboard.png}
+  \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}
+    [TBD]
+  \vspace{3cm}}}
+  \caption{Dashboard aplikácie}
+  \label{fig:ui_dashboard}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{images/ui_kanban.png}
+  \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}
+    [TBD]
+  \vspace{3cm}}}
+  \caption{Kanban tabuľa projektu}
+  \label{fig:ui_kanban}
+\end{figure}

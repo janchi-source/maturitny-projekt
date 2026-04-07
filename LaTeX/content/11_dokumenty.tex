@@ -1,12 +1,59 @@
 % ── Dokumenty ─────────────────────────────────────────────────
 \chapter{Dokumenty}
 
-% Doplňte krátky úvodný text kapitoly.
+        Správa dokumentov je jednou z~kľúčových funkcionalít systému. Umožňuje
+nahrávanie, organizovanie a~sprístupňovanie súborov priamo v~kontexte projektov
+a~úloh. Systém podporuje formáty PDF a~DOCX, pričom z~každého nahraného súboru
+automaticky extrahuje text pre potreby AI~chatu.
 
 \section{Tvorba dokumentov}
 
-% Doplňte popis vytvárania a editácie dokumentov v systéme.
+        Nahrávanie dokumentu je dostupné z~detailu projektu alebo úlohy. Používateľ
+vyberie súbor zo svojho zariadenia a~systém vykoná nasledujúce kroky:
+
+\begin{itemize}
+  \item \textbf{Validácia} -- systém overí, či má súbor povolený formát (PDF alebo DOCX)
+        a~či neprekračuje maximálnu veľkosť 16~MB.
+  \item \textbf{Uloženie} -- súbor je uložený na lokálny filesystém servera do adresára
+        \texttt{uploads/} s~unikátnym názvom (UUID), aby sa zabránilo kolíziám mien.
+  \item \textbf{Extrakcia textu} -- z~PDF súborov je text extrahovaný knižnicou
+        PyPDF2, z~DOCX súborov knižnicou python-docx. Extrahovaný text je uložený
+        do stĺpca \texttt{extracted\_text} v~databáze.
+  \item \textbf{Záznam v~databáze} -- vytvorí sa záznam \texttt{Document} s~metadátami:
+        pôvodný názov súboru, cesta k~uloženému súboru, typ, projekt a~nahrávateľ.
+\end{itemize}
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.85\textwidth]{images/nahravanie_dokumentu.png}
+  \fbox{\parbox{0.80\textwidth}{\centering\vspace{2.5cm}
+    [TBD]
+  \vspace{2.5cm}}}
+  \caption{Nahrávanie dokumentu}
+  \label{fig:nahravanie}
+\end{figure}
+
+        Nahrané dokumenty sú zobrazené v~prehľadnom zozname s~názvom, typom súboru
+a~dátumom nahratia. Každý dokument je možné stiahnuť alebo otvoriť v~AI~chate
+na kladenie otázok nad jeho obsahom.
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{images/zoznam_dokumentov.png}
+  \fbox{\parbox{0.85\textwidth}{\centering\vspace{2.5cm}
+    [TBD]
+  \vspace{2.5cm}}}
+  \caption{Zoznam dokumentov projektu}
+  \label{fig:dokumenty}
+\end{figure}
 
 \section{Zdieľanie dokumentov}
 
-% Doplňte popis zdieľania dokumentov medzi používateľmi a nastavení prístupu.
+        Dokumenty sú zdieľané v~rámci projektu -- všetci členovia projektu majú
+prístup k~dokumentom nahraným v~jeho kontexte. Tým je zabezpečená tímová
+spolupráca bez nutnosti posielania súborov e-mailom alebo cez externé úložiská.
+
+        Systém neposiela obsah dokumentov na externé servery. Súbory sú uložené
+lokálne na serveri organizácie a~AI~model pristupuje k~extrahovanému textu
+priamo z~lokálnej databázy. Toto riešenie zaručuje, že citlivé informácie zostanú výhradne
+v infraštruktúre organizácie.

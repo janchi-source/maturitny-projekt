@@ -1,12 +1,46 @@
 % ── Databázový model ──────────────────────────────────────────
 \chapter{Databázový model}
 
-% Doplňte krátky úvodný text kapitoly.
+        Databázový model je základom celej aplikácie. Definuje štruktúru uložených
+dát, vzťahy medzi entitami a~obmedzenia integrity. Všetky modely sú implementované
+pomocou SQLAlchemy ORM a~mapované na tabuľky SQLite databázy.
 
 \section{Entitno-relačný diagram}
 
-% Vložte ER diagram a popíšte vzťahy medzi entitami.
+        Aplikácia pracuje s~ôsmimi hlavnými entitami, ktoré sú vzájomne prepojené
+reláciami. Diagram zachytáva vzťahy medzi používateľmi, projektmi, úlohami,
+dokumentmi a~podpornými entitami.
+
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=\textwidth]{images/er_diagram.png}
+  \fbox{\parbox{0.9\textwidth}{\centering\vspace{4cm}
+    [TBD]
+  \vspace{4cm}}}
+  \caption{Entitno-relačný diagram aplikácie}
+  \label{fig:er_diagram}
+\end{figure}
+
+        Hlavné vzťahy medzi entitami:
+
+\begin{itemize}
+  \item Jeden \textbf{User} môže byť členom viacerých \textbf{Project}ov (M:N cez tabuľku členstva).
+  \item Jeden \textbf{Project} obsahuje viaceré \textbf{Task}y (1:N).
+  \item Jeden \textbf{Task} môže mať priradených viacerých používateľov (M:N).
+  \item Jeden \textbf{Project} môže mať viacero \textbf{Document}ov (1:N).
+  \item Každý \textbf{Document} môže byť asociovaný s~konkrétnou \textbf{Task}ou.
+  \item \textbf{Comment}y patria k~\textbf{Task}u alebo \textbf{Document}u (polymorfná relácia).
+  \item \textbf{Notification}e sú adresované konkrétnemu \textbf{User}ovi.
+\end{itemize}
 
 \section{Popis entít}
-
-% Doplňte podrobný popis jednotlivých tabuliek a ich atribútov.
+        TBD
+\begin{figure}[H]
+  \centering
+  % \includegraphics[width=0.9\textwidth]{images/databaza_schema.png}
+  \fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}
+    [TBD]
+  \vspace{3cm}}}
+  \caption{Prehľad databázových tabuliek}
+  \label{fig:db_tables}
+\end{figure}

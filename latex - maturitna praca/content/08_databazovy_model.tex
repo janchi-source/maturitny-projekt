@@ -1,0 +1,28 @@
+% ── Databázový model ──────────────────────────────────────────
+\chapter{Databázový model}
+
+        Databázový model tvorí jadro aplikácie a~určuje štruktúru dát, väzby medzi
+entitami aj pravidlá integrity. Implementovali sme ho v~SQLAlchemy ORM a~namapovali
+na tabuľky SQLite. Pri návrhu sme vychádzali z~potreby prepojiť projektové riadenie, správu
+dokumentov a~AI~komunikáciu v~jednom konzistentnom priestore bez zbytočnej duplicity.
+
+        Centrálna je entita projektu, na ktorú sa viažu procesné dáta (úlohy,
+plánovanie, notifikácie), obsahové dáta (dokumenty) a~komunikačné dáta (chatové
+relácie a~správy). Model kombinuje väzby jeden-ku-viacerým aj viacerí-ku-viacerým.
+Hierarchické vzťahy sme riešili priamo cudzími kľúčmi, zatiaľ čo flexibilné prepojenia
+(napr. štítky alebo závislosti úloh) sme realizovali cez asociačné tabuľky.
+
+        Životný cyklus údajov sme riadili politikami \texttt{CASCADE} a~\texttt{SET NULL}.
+Pri zmazaní nadradeného záznamu sa závislé dáta odstránia tam, kde nemajú samostatný
+význam; v~prípadoch, keď je potrebné zachovať históriu, sa referencia nastaví na
+\texttt{NULL}. Tým sme znížili riziko osirelých záznamov a~zachovali auditovateľnosť.
+
+        Integritu sme doplnili obmedzeniami \texttt{NOT NULL}, \texttt{UNIQUE} a~kompozitnými
+unikátnymi kľúčmi, ktoré bránia duplicitným väzbám v~asociačných tabuľkách. Väčšina
+atribútov je relačná (identifikátory, referencie, stavy, časové značky), pričom JSON
+polia sme použili len tam, kde bola potrebná vyššia flexibilita, napríklad pre metadáta,
+práva alebo citácie odpovedí AI.
+
+        Celkovo sme model navrhli ako rozšíriteľný: jadrové tabuľky, asociačné
+tabuľky a~konfiguračné entity umožňujú pridávať nové funkcie inkrementálne bez
+zásadných zásahov do existujúcej schémy.

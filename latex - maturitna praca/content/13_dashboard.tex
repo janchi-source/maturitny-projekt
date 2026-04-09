@@ -1,0 +1,80 @@
+% ── Dashboard ─────────────────────────────────────────────────
+\chapter{Dashboard}
+
+        Dashboard sme navrhli ako centrálny ovládací panel aplikácie ProMat, ktorý poskytuje
+používateľom rýchly prehľad aktuálneho stavu ich projektov, úloh a~tímov. Slúži ako vstupný
+bod po prihlásení a~umožňuje rýchly prístup k~kľúčovým metrikám a~aktívnym projektom.
+
+\section{Prehľad a~úvodné informácie}
+
+        Hlavnú stránku dashboarda sme namapovali na endpoint \texttt{/dashboard}. Zobrazuje
+komplexný prehľad pracovného priestoru používateľa. V~hornej časti sa zobrazujú tri kľúčové metriky:
+
+\begin{itemize}
+  \item \textbf{Aktívne projekty} -- počet aktívnych projektov, do ktorých má používateľ prístup,
+  \item \textbf{Blížiace sa termíny} -- počet úloh s~termínom vypršania v~nasledujúcich 7 dňoch,
+  \item \textbf{Aktuálny dátum} -- aktuálny dátum pre rýchlu orientáciu.
+\end{itemize}
+
+        Tieto informácie sme zobrazili vo forme kariet v~prehľadnom gride s~vizuálnym odlíšením.
+
+\section{AI-asistované poznatky}
+
+        Jedným z~kľúčových prvkov dashboarda sú \textbf{AI Insights} -- automaticky generované
+upozornenia a~poznatky na základe aktuálneho stavu úloh a~projektov. Systém dynamicky
+vytvára maximálne 4 poznatky naraz podľa priority.
+
+\subsection{Typy poznatkov}
+
+        Medzi hlavné typy poznatkov patria:
+
+\begin{itemize}
+  \item \textbf{Detekcia rizík} -- upozornenie na úlohy po termíne,
+  \item \textbf{Upozornenie na termín} -- upozornenie na úlohy splatné v~najbližších 24 hodinách,
+  \item \textbf{Plánovaná práca} -- prehľad plánovaných úloh v~horizonte nasledujúceho týždňa,
+  \item \textbf{Úspech} -- zvýraznenie nedávno dokončených úloh,
+  \item \textbf{Vyžaduje pozornosť} -- signalizácia vysoko prioritných úloh bez stanoveného termínu.
+\end{itemize}
+
+        Každý poznatkok obsahuje popis, odkaz na podrobnosti a~vizuálne odlíšenie farbou,
+ktorá indikuje typ upozornenia (obr.~ef{fig:dashboard_statistiky}).
+
+\section{Sledovanie prioritných projektov}
+
+        Sekciu sledovania prioritných projektov sme navrhli tak, aby zobrazovala top 3 aktívne projekty
+usporiadané podľa času poslednej úpravy. Pri každom projekte sa uvádza názov, percento pokroku,
+textové označenie termínu (napr. blíži sa termín alebo po termíne), farebný indikátor stavu
+a~počet členov tímu.
+
+        Používateľ môže kliknúť na projekt a~prejsť na stránku s~jeho podrobnosťami.
+
+\section{Vyhľadávanie}
+
+        Do aplikácie sme zaradili globálnu vyhľadávaciu funkciu dostupnú na endpoint \texttt{/search}.
+Používateľ môže rýchlo vyhľadávať projekty podľa názvu alebo popisu, úlohy podľa názvu alebo
+popisu a~dokumenty podľa názvu alebo obsahu.
+
+        Vyhľadávanie je necitlivé na veľkosť písmen a~aplikuje sa na projekty viditeľné
+danému používateľovi (na základe oprávnení a~členstva v~tímoch). Výsledky sú zoradené
+chronologicky podľa času vytvorenia alebo aktualizácie.
+
+\section{Bezpečnosť a~oprávnenia}
+
+        Všetky zobrazené údaje na dashboarde sme filtrovali podľa oprávnení používateľa.
+Funkcia \texttt{\_visible\_project\_ids\_query()} zabezpečuje, že používateľ vidí iba projekty,
+ku ktorým má oprávnený prístup. Systém automaticky aplikuje pravidlá členstva tímu
+a~všetky metriky aj poznatky sa počítajú iba z~viditeľných projektov a~úloh (obr.~ef{fig:dashboard_hlavny}).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/dashboard.png}
+  \caption{Dashboard aplikácie ProMat}
+  \label{fig:dashboard_hlavny}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.9\textwidth]{images/dashboard_statistiky.png}
+  \caption{Štatistiky a~AI-asistované poznatky na dashboarde}
+  \label{fig:dashboard_statistiky}
+\end{figure}

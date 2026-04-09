@@ -22,7 +22,7 @@ Tento mechanizmus zabraňuje neautorizovaným osobám vytvoriť si konto a~zabez
   \item Heslo je zahashované pomocou funkcie \texttt{generate\_password\_hash} z~Werkzeug~\cite{werkzeug_docs}
         pred uložením do databázy. Pôvodné heslo sa nikdy neukladá.
   \item Po úspešnej registrácii je používateľovi pridelená predvolená rola a~je
-        presmerovaný na prihlasovanie (obr.~ef{fig:registracia}).
+        presmerovaný na prihlasovanie (obr.~\ref{fig:registracia}).
 \end{itemize}
 
 \begin{figure}[H]
@@ -47,7 +47,7 @@ prihlasovacích údajov s~uloženými hodnotami v~databáze.
   \item Pri úspešnom prihlásení Flask-Login vytvorí reláciu a~uloží informáciu
         o~prihlásenom používateľovi do HTTPS session cookie.
   \item Pri nesprávnych údajoch systém zobrazí chybové hlásenie bez prezradenia,
-        ktorý z~údajov je nesprávny (obr.~ef{fig:prihlasenie}).
+        ktorý z~údajov je nesprávny (obr.~\ref{fig:prihlasenie}).
 \end{itemize}
 
         Systém obsahuje aj vstavaného administrátora, ktorého prihlasovacie údaje

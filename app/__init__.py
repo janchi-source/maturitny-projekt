@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from flask import Flask, g, redirect, render_template, request
@@ -30,7 +31,10 @@ except ModuleNotFoundError as exc:
 def create_app(config_class=Config):
     import re as _re
 
-    app = Flask(__name__)
+    if os.getenv("VERCEL"):
+        app = Flask(__name__, instance_path="/tmp/instance")
+    else:
+        app = Flask(__name__)
 
     @app.template_filter("strip_mentions")
     def strip_mentions_filter(text):

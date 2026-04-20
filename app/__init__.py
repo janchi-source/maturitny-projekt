@@ -1,8 +1,9 @@
 from pathlib import Path
 
-from flask import Flask, g, render_template
+from flask import Flask, g, redirect, render_template, request
 from flask_login import current_user
 from sqlalchemy import event
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import generate_password_hash
 
 from config import Config
@@ -35,11 +36,24 @@ def create_app(config_class=Config):
     def strip_mentions_filter(text):
         return _re.sub(r'@\[[a-z]+:\d+:([^\]]+)\]', r'@\1', text or "")
     app.config.from_object(config_class)
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=app.config.get("PROXY_FIX_X_FOR", 1),
+        x_proto=app.config.get("PROXY_FIX_X_PROTO", 1),
+        x_host=app.config.get("PROXY_FIX_X_HOST", 1),
+        x_port=app.config.get("PROXY_FIX_X_PORT", 1),
+        x_prefix=app.config.get("PROXY_FIX_X_PREFIX", 1),
+    )
 
     upload_folder = Path(app.config["UPLOAD_FOLDER"])
     if not upload_folder.is_absolute():
         upload_folder = Path(app.root_path).parent / upload_folder
-    upload_folder.mkdir(parents=True, exist_ok=True)
+    try:
+        upload_folder.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        fallback_upload_folder = Path("/tmp/uploads")
+        fallback_upload_folder.mkdir(parents=True, exist_ok=True)
+        upload_folder = fallback_upload_folder
     app.config["UPLOAD_FOLDER"] = str(upload_folder.resolve())
 
     db.init_app(app)
@@ -58,6 +72,35 @@ def create_app(config_class=Config):
     app.register_blueprint(settings_bp, url_prefix="/settings")
     if workspaces_bp is not None:
         app.register_blueprint(workspaces_bp, url_prefix="/workspaces")
+
+    @app.before_request
+    def _enforce_https():
+        if not app.config.get("ENFORCE_HTTPS", False):
+            return None
+        if request.is_secure or app.debug or app.testing:
+            return None
+        if request.method in ("OPTIONS",):
+            return None
+        if request.path.startswith("/.well-known/"):
+            return None
+        host = (request.host or "").split(":", 1)[0].lower()
+        if host in {"localhost", "127.0.0.1", "::1"}:
+            return None
+        return redirect(request.url.replace("http://", "https://", 1), code=301)
+
+    @app.after_request
+    def _set_hsts_header(response):
+        if not app.config.get("HSTS_ENABLED", False):
+            return response
+        if request.is_secure:
+            max_age = int(app.config.get("HSTS_MAX_AGE", 31536000))
+            value = f"max-age={max_age}"
+            if app.config.get("HSTS_INCLUDE_SUBDOMAINS", True):
+                value += "; includeSubDomains"
+            if app.config.get("HSTS_PRELOAD", False):
+                value += "; preload"
+            response.headers["Strict-Transport-Security"] = value
+        return response
 
     @app.context_processor
     def inject_workspace_context():

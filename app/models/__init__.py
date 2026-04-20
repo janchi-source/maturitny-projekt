@@ -48,7 +48,6 @@ def _ensure_legacy_schema_updates():
         db.session.execute(db.text("ALTER TABLE tasks ADD COLUMN sprint_id INTEGER"))
         db.session.commit()
 
-    # Migrate old role values to new role names
     old_to_new = {
         "owner": "leader",
         "advocate": "coordinator",

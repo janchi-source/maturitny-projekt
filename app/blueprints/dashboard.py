@@ -295,7 +295,6 @@ def _calculate_project_progress(tasks):
 
     total = 0
     for task in tasks:
-        # Keep explicit per-task progress when present, but never allow DONE to show below 100%.
         explicit_progress = max(0, min(int(getattr(task, "progress", 0) or 0), 100))
         status_progress = status_defaults.get(task.status, 0)
         total += max(explicit_progress, status_progress)

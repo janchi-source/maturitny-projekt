@@ -2,7 +2,7 @@ import csv
 import io
 import re
 from collections import defaultdict
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -880,7 +880,6 @@ def approve_attachment(task_id, attachment_id):
         flash("Only pending attachments can be approved.", "error")
         return redirect(url_for("tasks.detail", task_id=task.id))
 
-    # supersede the current active version for this filename
     TaskAttachment.query.filter_by(
         task_id=task.id,
         original_name=attachment.original_name,

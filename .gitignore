@@ -6,3 +6,5 @@ venv/
 .sfdx
 .claude
 .vscode/
+.conda
+.ruff_cache/

@@ -156,13 +156,11 @@ def ensure_builtin_admin(app):
         db.session.add(user)
         db.session.flush()
     else:
-        # Keep configured identity in sync when it does not collide with another user.
         if user.email != email and (user_by_email is None or user_by_email.id == user.id):
             user.email = email
         if user.username != username and (user_by_username is None or user_by_username.id == user.id):
             user.username = username
 
-        # Keep built-in admin credentials deterministic from config.
         user.password_hash = generate_password_hash(password)
 
     assignment = UserManagedRole.query.filter_by(user_id=user.id).first()

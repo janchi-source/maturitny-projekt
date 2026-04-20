@@ -1,20 +1,10 @@
-/* =========================================================
-   ProMat — AI Chat
-   ========================================================= */
-
-// ── State ────────────────────────────────────────────────────────────────
-
-const activeMentions = []; // { type, id, label }
-let mentionTriggerPos = -1; // textarea index where @ was typed
-
-// ── Bootstrap ────────────────────────────────────────────────────────────
+const activeMentions = [];
+let mentionTriggerPos = -1;
 
 document.addEventListener('DOMContentLoaded', () => {
   setupModal();
   if (SESSION_ID) initChat();
 });
-
-// ── Modal ────────────────────────────────────────────────────────────────
 
 function setupModal() {
   const modal   = document.getElementById('new-chat-modal');
@@ -37,8 +27,6 @@ function setupModal() {
   });
 }
 
-// ── Chat init ────────────────────────────────────────────────────────────
-
 function initChat() {
   const form     = document.getElementById('chat-form');
   const input    = document.getElementById('message-input');
@@ -46,7 +34,6 @@ function initChat() {
 
   if (!form || !input) return;
 
-  // Render existing AI messages as markdown
   document.querySelectorAll('.ai-message').forEach(el => {
     el.innerHTML = renderMarkdown(el.dataset.raw || el.textContent);
   });
@@ -73,8 +60,6 @@ function initChat() {
 
   form.addEventListener('submit', (e) => { e.preventDefault(); doSend(input); });
 }
-
-// ── @Mention system ───────────────────────────────────────────────────────
 
 function handleMentionInput(input) {
   const cursor = input.selectionStart;
@@ -208,8 +193,6 @@ function isDropdownOpen() {
   return !document.getElementById('mention-dropdown')?.classList.contains('hidden');
 }
 
-// ── Messaging ─────────────────────────────────────────────────────────────
-
 async function doSend(input) {
   const text = input.value.trim();
   if (!text && activeMentions.length === 0) return;
@@ -259,8 +242,6 @@ async function doSend(input) {
     input.focus();
   }
 }
-
-// ── Message renderers ──────────────────────────────────────────────────────
 
 function appendUserMessage(text, mentions) {
   const chipsHtml = mentions.length ? `
@@ -339,8 +320,6 @@ function mountMessage(el) {
   container.appendChild(el);
   scrollToBottom();
 }
-
-// ── Utilities ──────────────────────────────────────────────────────────────
 
 function renderMarkdown(text) {
   if (typeof marked === 'undefined') return `<p>${escHtml(text)}</p>`;

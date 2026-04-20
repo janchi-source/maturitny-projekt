@@ -88,7 +88,6 @@ def _load_mention_context(mention):
     type_slug = mention.get('type')
     entity_id  = mention.get('id')
 
-    # ── Document ──────────────────────────────────────────────────────────
     if type_slug == 'doc':
         doc = db.session.get(Document, entity_id)
         if not doc:
@@ -106,7 +105,6 @@ def _load_mention_context(mention):
             lines.append(f'\nContent:\n{doc.extracted_text[:4000]}')
         return '\n'.join(lines)
 
-    # ── Project ───────────────────────────────────────────────────────────
     if type_slug == 'project':
         project = db.session.get(Project, entity_id)
         if not project:
@@ -130,7 +128,6 @@ def _load_mention_context(mention):
             lines.append('Open tasks:\n' + '\n'.join(task_lines))
         return '\n'.join(lines)
 
-    # ── Task ──────────────────────────────────────────────────────────────
     if type_slug == 'task':
         task = db.session.get(Task, entity_id)
         if not task:
@@ -153,7 +150,6 @@ def _load_mention_context(mention):
         if task.description:
             lines.append(f'Description: {task.description}')
 
-        # Checklist / to-do items
         if task.checklist_items:
             done  = sum(1 for i in task.checklist_items if i.is_done)
             total = len(task.checklist_items)
@@ -163,7 +159,6 @@ def _load_mention_context(mention):
             )
             lines.append(f'Checklist ({done}/{total} done):\n{items}')
 
-        # Attachments / files
         if task.attachments:
             files = '\n'.join(
                 f'  - {a.original_name} ({round(a.file_size / 1024, 1)} KB, v{a.version})'
@@ -171,7 +166,6 @@ def _load_mention_context(mention):
             )
             lines.append(f'Attachments:\n{files}')
 
-        # Blocking / blocked-by
         if task.blocking_tasks:
             lines.append(f'Blocked by: {", ".join(t.title for t in task.blocking_tasks)}')
         if task.blocked_tasks:

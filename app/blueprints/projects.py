@@ -8,10 +8,9 @@ from sqlalchemy.orm import joinedload, subqueryload
 from ..cache_helpers import get_users_dropdown
 from ..extensions import db
 from ..models.document import Document
-from ..models.planning import AutomationRule, ProjectMembership, ProjectMembershipRole, ProjectWatcher, TaskBoardSetting
+from ..models.planning import ProjectMembership, ProjectMembershipRole, ProjectWatcher, TaskBoardSetting
 from ..models.project import Project, ProjectStatus
 from ..models.task import Task, TaskPriority, TaskStatus
-from ..models.user import User
 from ..models.user import user_has_right
 
 

@@ -3,7 +3,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-import ollama
+try:
+    import ollama
+except Exception:
+    ollama = None
 from flask import current_app
 
 _MENTION_RE = re.compile(r'@\[(doc|project|task):\d+:([^\]]+)\]')
@@ -20,6 +23,8 @@ def _ollama_text(response):
 
 
 def _client():
+    if ollama is None:
+        raise RuntimeError('ollama package is not available')
     return ollama.Client(host=current_app.config.get('OLLAMA_BASE_URL', 'http://localhost:11434'))
 
 

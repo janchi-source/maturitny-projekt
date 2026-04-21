@@ -9,6 +9,8 @@ if os.getenv("VERCEL"):
 	db_url = os.getenv("DATABASE_URL", "").strip()
 	if not db_url or db_url == "sqlite:///promat.db":
 		os.environ["DATABASE_URL"] = "sqlite:////tmp/promat.db"
+	if not os.getenv("SECRET_KEY"):
+		os.environ["SECRET_KEY"] = "vercel-runtime-secret"
 
 ProductionConfig.validate()
 app = create_app(ProductionConfig)

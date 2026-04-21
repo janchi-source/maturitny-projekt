@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 
 from flask import Flask, g, redirect, render_template, request
@@ -32,7 +33,8 @@ def create_app(config_class=Config):
     import re as _re
 
     if os.getenv("VERCEL"):
-        app = Flask(__name__, instance_path="/tmp/instance")
+        instance_path = "/tmp/instance" if os.name != "nt" else str(Path(tempfile.gettempdir()) / "instance")
+        app = Flask(__name__, instance_path=instance_path)
     else:
         app = Flask(__name__)
 

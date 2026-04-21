@@ -9,11 +9,13 @@ from ..extensions import db
 from ..models.document import Document
 from ..models.planning import ProjectMembership
 from ..models.project import Project, ProjectStatus
+from ..services.ai_service import AIService
 from ..models.task import Task, TaskPriority, TaskStatus
 from ..models.user import user_has_right
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
+ai_service = AIService()
 
 
 @dashboard_bp.route("/")
@@ -127,69 +129,24 @@ def index():
         Task.status != TaskStatus.DONE,
     ).count()
 
-    ai_insights = []
+    metrics = {
+        'overdue_count': overdue_count,
+        'due_soon_count': due_soon_count,
+        'due_this_week_count': due_this_week_count,
+        'done_recently_count': done_recently_count,
+        'high_no_due_count': high_no_due_count,
+    }
 
-    if overdue_count:
-        task_word = "task" if overdue_count == 1 else "tasks"
-        ai_insights.append({
-            "type_label": "Risk Detection",
-            "title": f"{overdue_count} overdue {task_word}",
-            "description": f"{overdue_count} {task_word} passed their due date without being completed.",
-            "timestamp": "Now",
-            "action_label": "View Tasks",
-            "action_url": "/tasks/?quick=overdue",
-            "tone": "default",
-        })
+    ai_insights = ai_service.generate_dashboard_insights(metrics)
+    if not ai_insights:
+        ai_insights = _fallback_ai_insights(
+            overdue_count,
+            due_soon_count,
+            due_this_week_count,
+            done_recently_count,
+            high_no_due_count,
+        )
 
-    if due_soon_count:
-        task_word = "task" if due_soon_count == 1 else "tasks"
-        ai_insights.append({
-            "type_label": "Deadline Alert",
-            "title": f"{due_soon_count} {task_word} due today or tomorrow",
-            "description": f"{due_soon_count} {task_word} need attention in the next 24 hours.",
-            "timestamp": "Now",
-            "action_label": "View Tasks",
-            "action_url": "/tasks/?quick=due_week",
-            "tone": "primary",
-        })
-
-    if due_this_week_count:
-        task_word = "task" if due_this_week_count == 1 else "tasks"
-        ai_insights.append({
-            "type_label": "Upcoming Work",
-            "title": f"{due_this_week_count} {task_word} due this week",
-            "description": f"Plan ahead — {due_this_week_count} {task_word} are scheduled for the next 7 days.",
-            "timestamp": "Now",
-            "action_label": "View Tasks",
-            "action_url": "/tasks/?quick=due_week",
-            "tone": "indigo",
-        })
-
-    if done_recently_count:
-        task_word = "task" if done_recently_count == 1 else "tasks"
-        ai_insights.append({
-            "type_label": "Achievement",
-            "title": f"{done_recently_count} {task_word} completed this week",
-            "description": f"Great progress — {done_recently_count} {task_word} were marked done in the last 7 days.",
-            "timestamp": "This week",
-            "action_label": "View Tasks",
-            "action_url": "/tasks/?status=done",
-            "tone": "emerald",
-        })
-
-    if high_no_due_count and len(ai_insights) < 4:
-        task_word = "task" if high_no_due_count == 1 else "tasks"
-        ai_insights.append({
-            "type_label": "Attention Needed",
-            "title": f"{high_no_due_count} high-priority {task_word} without a deadline",
-            "description": f"{high_no_due_count} high or critical priority {task_word} have no due date set.",
-            "timestamp": "Now",
-            "action_label": "View Tasks",
-            "action_url": "/tasks/?quick=high_priority",
-            "tone": "indigo",
-        })
-
-    ai_insights = ai_insights[:4]
     ai_insight_count = len(ai_insights)
 
     projects = (
@@ -280,6 +237,72 @@ def _visible_project_ids_query():
             Project.id.in_(membership_project_ids),
         )
     )
+
+
+def _fallback_ai_insights(overdue_count, due_soon_count, due_this_week_count, done_recently_count, high_no_due_count):
+    ai_insights = []
+
+    if overdue_count:
+        task_word = "task" if overdue_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Risk Detection",
+            "title": f"{overdue_count} overdue {task_word}",
+            "description": f"{overdue_count} {task_word} passed their due date without being completed.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=overdue",
+            "tone": "default",
+        })
+
+    if due_soon_count:
+        task_word = "task" if due_soon_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Deadline Alert",
+            "title": f"{due_soon_count} {task_word} due today or tomorrow",
+            "description": f"{due_soon_count} {task_word} need attention in the next 24 hours.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=due_week",
+            "tone": "primary",
+        })
+
+    if due_this_week_count:
+        task_word = "task" if due_this_week_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Upcoming Work",
+            "title": f"{due_this_week_count} {task_word} due this week",
+            "description": f"Plan ahead — {due_this_week_count} {task_word} are scheduled for the next 7 days.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=due_week",
+            "tone": "indigo",
+        })
+
+    if done_recently_count:
+        task_word = "task" if done_recently_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Achievement",
+            "title": f"{done_recently_count} {task_word} completed this week",
+            "description": f"Great progress — {done_recently_count} {task_word} were marked done in the last 7 days.",
+            "timestamp": "This week",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?status=done",
+            "tone": "emerald",
+        })
+
+    if high_no_due_count and len(ai_insights) < 4:
+        task_word = "task" if high_no_due_count == 1 else "tasks"
+        ai_insights.append({
+            "type_label": "Attention Needed",
+            "title": f"{high_no_due_count} high-priority {task_word} without a deadline",
+            "description": f"{high_no_due_count} high or critical priority {task_word} have no due date set.",
+            "timestamp": "Now",
+            "action_label": "View Tasks",
+            "action_url": "/tasks/?quick=high_priority",
+            "tone": "indigo",
+        })
+
+    return ai_insights[:4]
 
 
 def _calculate_project_progress(tasks):

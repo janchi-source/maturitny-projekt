@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload, subqueryload
 from ..cache_helpers import get_users_dropdown
 from ..extensions import db
 from ..models.document import Document
-from ..models.planning import ProjectMembership, ProjectMembershipRole, ProjectWatcher, TaskBoardSetting
+from ..models.planning import ProjectMembership, ProjectMembershipRole, TaskBoardSetting, Watcher
 from ..models.project import Project, ProjectStatus
 from ..models.task import Task, TaskPriority, TaskStatus
 from ..models.user import user_has_right
@@ -120,7 +120,7 @@ def detail(project_id):
             subqueryload(Project.tasks).subqueryload(Task.labels),
             subqueryload(Project.documents).joinedload(Document.uploader),
             subqueryload(Project.memberships).joinedload(ProjectMembership.user),
-            subqueryload(Project.watchers).joinedload(ProjectWatcher.user),
+            subqueryload(Project.watchers).joinedload(Watcher.user),
             subqueryload(Project.automation_rules),
             joinedload(Project.owner),
         )
@@ -149,7 +149,7 @@ def detail(project_id):
 
     team_members = list(team_map.values())
     membership_map = {membership.user_id: membership for membership in project.memberships}
-    is_watching = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first() is not None
+    is_watching = Watcher.query.filter_by(project_id=project.id, user_id=current_user.id).first() is not None
     watchers = [watch.user for watch in project.watchers if watch.user]
     sorted_tasks = sorted(project.tasks, key=lambda task: task.created_at, reverse=True)
 
@@ -201,13 +201,13 @@ def detail(project_id):
 def toggle_watch(project_id):
     project = Project.query.get_or_404(project_id)
     _require_project_access(project)
-    watcher = ProjectWatcher.query.filter_by(project_id=project.id, user_id=current_user.id).first()
+    watcher = Watcher.query.filter_by(project_id=project.id, user_id=current_user.id).first()
 
     if watcher:
         db.session.delete(watcher)
         flash("Stopped watching project.", "info")
     else:
-        db.session.add(ProjectWatcher(project_id=project.id, user_id=current_user.id))
+        db.session.add(Watcher(project_id=project.id, user_id=current_user.id))
         flash("Now watching project.", "success")
 
     db.session.commit()

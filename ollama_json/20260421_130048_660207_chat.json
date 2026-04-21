@@ -1,0 +1,47 @@
+{
+  "timestamp_utc": "2026-04-21T13:00:48.660927Z",
+  "kind": "chat",
+  "request": {
+    "model": "gemma4:26b",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful AI assistant for ProMat, a project management tool. Be concise, clear, and professional."
+      },
+      {
+        "role": "user",
+        "content": "@[doc:1:poznamky_ann.pdf] o com je tento dokument?"
+      },
+      {
+        "role": "assistant",
+        "content": "AI unavailable: model requires more system memory (9.1 GiB) than is available (7.7 GiB) (status code: 500)"
+      },
+      {
+        "role": "user",
+        "content": "hi"
+      }
+    ],
+    "stream": false
+  },
+  "response": {
+    "model": "gemma4:26b",
+    "created_at": "2026-04-21T13:00:48.6469036Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 44443690800,
+    "load_duration": 20229643300,
+    "prompt_eval_count": 102,
+    "prompt_eval_duration": 11672661600,
+    "eval_count": 179,
+    "eval_duration": 12189243400,
+    "message": {
+      "role": "assistant",
+      "content": "Hello! I am your ProMat assistant. How can I help you with your projects or the ProMat tool today?",
+      "thinking": "*   User says: \"hi\"\n    *   Context: I am an AI assistant for \"ProMat\", a project management tool.\n    *   Tone: Helpful, concise, clear, professional.\n\n    *   Acknowledge the greeting.\n    *   Introduce myself/my purpose (ProMat assistant).\n    *   Offer assistance.\n\n    *   \"Hello! How can I help you with ProMat today?\"\n    *   \"Hi! I'm your ProMat assistant. Do you have any questions about managing your projects, tasks, or documentation?\"\n\n    *   \"Hello! I am your ProMat assistant. How can I help you with your projects or the ProMat tool today?\"",
+      "images": null,
+      "tool_name": null,
+      "tool_calls": null
+    },
+    "logprobs": null
+  }
+}

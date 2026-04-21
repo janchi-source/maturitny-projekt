@@ -1,4 +1,7 @@
 import re
+import json
+from datetime import datetime
+from pathlib import Path
 
 import ollama
 from flask import current_app
@@ -22,6 +25,56 @@ def _client():
 
 def _model():
     return current_app.config.get('OLLAMA_MODEL', 'gemma3:1b')
+
+
+def _project_root():
+    return Path(__file__).resolve().parents[2]
+
+
+def _capture_dir():
+    return _project_root() / 'ollama_json'
+
+
+def _to_jsonable(value):
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, list):
+        return [_to_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(k): _to_jsonable(v) for k, v in value.items()}
+    if hasattr(value, 'model_dump'):
+        try:
+            return _to_jsonable(value.model_dump())
+        except Exception:
+            pass
+    if hasattr(value, '__dict__'):
+        try:
+            return _to_jsonable(vars(value))
+        except Exception:
+            pass
+    return str(value)
+
+
+def _save_ollama_capture(kind, request_payload, response_payload):
+    try:
+        capture_dir = _capture_dir()
+        capture_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')
+        path = capture_dir / f'{stamp}_{kind}.json'
+        with path.open('w', encoding='utf-8') as handle:
+            json.dump(
+                {
+                    'timestamp_utc': datetime.utcnow().isoformat() + 'Z',
+                    'kind': kind,
+                    'request': _to_jsonable(request_payload),
+                    'response': _to_jsonable(response_payload),
+                },
+                handle,
+                ensure_ascii=False,
+                indent=2,
+            )
+    except Exception as exc:
+        current_app.logger.warning('Ollama capture skipped: %s', exc)
 
 
 class AIService:
@@ -59,9 +112,11 @@ class AIService:
         for row in history_rows[:-1]:
             messages.append({'role': row.role.value, 'content': row.content})
         messages.append({'role': 'user', 'content': _strip_mentions(message)})
+        request_payload = {'model': _model(), 'messages': messages, 'stream': False}
 
         try:
-            response = _client().chat(model=_model(), messages=messages, stream=False)
+            response = _client().chat(model=request_payload['model'], messages=messages, stream=False)
+            _save_ollama_capture('chat', request_payload, response)
             return _ollama_text(response)
         except Exception as exc:
             current_app.logger.error('Ollama chat error: %s', exc)
@@ -71,8 +126,10 @@ class AIService:
         if not text or not text.strip():
             return 'No text available to summarize.'
         messages = [{'role': 'user', 'content': 'Summarize the following in 3–5 concise sentences:\n\n' + text[:6000]}]
+        request_payload = {'model': _model(), 'messages': messages, 'stream': False}
         try:
-            response = _client().chat(model=_model(), messages=messages, stream=False)
+            response = _client().chat(model=request_payload['model'], messages=messages, stream=False)
+            _save_ollama_capture('summarize', request_payload, response)
             return _ollama_text(response)
         except Exception as exc:
             current_app.logger.error('Ollama summarize error: %s', exc)

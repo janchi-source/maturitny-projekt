@@ -40,7 +40,7 @@
           </span>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium truncate leading-snug">{{ s.title }}</p>
-            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ s.created_at.strftime('%b %-d') }}</p>
+            <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{{ s.created_at.strftime('%b %d').replace(' 0', ' ') }}</p>
           </div>
         </a>
         <form action="{{ url_for('ai_chat.delete_session', session_id=s.id) }}" method="POST" class="pr-2 opacity-0 group-hover:opacity-100 transition-opacity">

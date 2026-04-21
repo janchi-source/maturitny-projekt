@@ -58,12 +58,13 @@ class Config:
     HSTS_PRELOAD = _as_bool(os.getenv("HSTS_PRELOAD"), False)
 
     OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma4:26b")
+    OLLAMA_INSIGHTS_MODEL = os.getenv("OLLAMA_INSIGHTS_MODEL", "gemma3:1b")
     REGISTRATION_INVITE_CODE = os.getenv("REGISTRATION_INVITE_CODE", "PROMAT-BASIC")
 
-    BUILTIN_ADMIN_USERNAME = os.getenv("BUILTIN_ADMIN_USERNAME", "")
-    BUILTIN_ADMIN_EMAIL = os.getenv("BUILTIN_ADMIN_EMAIL", "")
-    BUILTIN_ADMIN_PASSWORD = os.getenv("BUILTIN_ADMIN_PASSWORD", "")
+    BUILTIN_ADMIN_USERNAME = os.getenv("BUILTIN_ADMIN_USERNAME", "admin")
+    BUILTIN_ADMIN_EMAIL = os.getenv("BUILTIN_ADMIN_EMAIL", "admin@mail.eu")
+    BUILTIN_ADMIN_PASSWORD = os.getenv("BUILTIN_ADMIN_PASSWORD", "seksos")
 
 
 class DevelopmentConfig(Config):

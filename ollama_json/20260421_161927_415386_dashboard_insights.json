@@ -1,0 +1,35 @@
+{
+  "timestamp_utc": "2026-04-21T16:19:27.416095Z",
+  "kind": "dashboard_insights",
+  "request": {
+    "model": "gemma4:26b",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Generate 1-4 actionable dashboard insights as JSON.\nReturn ONLY JSON, no markdown.\nUse schema keys exactly: type_label,title,description,timestamp,action_label,action_url,tone.\nAllowed tones: default, primary, indigo, emerald.\nAllowed action_url values only: /tasks/?quick=overdue, /tasks/?quick=due_week, /tasks/?status=done, /tasks/?quick=high_priority.\n\nMetrics:\n{\"overdue_count\": 1, \"due_soon_count\": 0, \"due_this_week_count\": 2, \"done_recently_count\": 2, \"high_no_due_count\": 0}"
+      }
+    ],
+    "stream": false
+  },
+  "response": {
+    "model": "gemma4:26b",
+    "created_at": "2026-04-21T16:19:27.4098241Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 332239813100,
+    "load_duration": 22299695900,
+    "prompt_eval_count": 170,
+    "prompt_eval_duration": 185783700,
+    "eval_count": 1761,
+    "eval_duration": 148595099800,
+    "message": {
+      "role": "assistant",
+      "content": "[\n  {\n    \"type_label\": \"Alert\",\n    \"title\": \"Overdue Task\",\n    \"description\": \"You have 1 task that is past its deadline. Address it immediately to stay on track.\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"Review overdue\",\n    \"action_url\": \"/tasks/?quick=overdue\",\n    \"tone\": \"primary\"\n  },\n  {\n    \"type_label\": \"Reminder\",\n    \"title\": \"Upcoming Deadlines\",\n    \"description\": \"You have 2 tasks due later this week. Plan your schedule accordingly.\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"View weekly tasks\",\n    \"action_url\": \"/tasks/?quick=due_week\",\n    \"tone\": \"indigo\"\n  },\n  {\n    \"type_label\": \"Success\",\n    \"title\": \"Great Momentum!\",\n    \"description\": \"You have completed 2 tasks recently. Keep up the excellent work!\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"See completed\",\n    \"action_url\": \"/tasks/?status=done\",\n    \"tone\": \"emerald\"\n  }\n]",
+      "thinking": "*   Input: JSON metrics (`{\"overdue_count\": 1, \"due_soon_count\": 0, \"due_this_week_count\": 2, \"done_recently_count\": 2, \"high_no_due_count\": 0}`).\n    *   Output: 1-4 actionable dashboard insights as JSON.\n    *   Constraints:\n        *   Return *ONLY* JSON (no markdown).\n        *   Schema keys: `type_label`, `title`, `description`, `timestamp`, `action_label`, `action_url`, `tone`.\n        *   Allowed tones: `default`, `primary`, `indigo`, `emerald`.\n        *   Allowed action_url values: `/tasks/?quick=overdue`, `/tasks/?quick=due_week`, `/tasks/?status=done`, `/tasks/?quick=high_priority`.\n        *   Logic: Generate insights based on the provided metrics.\n\n    *   `overdue_count: 1` -> Actionable insight needed. URL: `/tasks/?quick=overdue`. Tone: `primary` (urgent) or `default`.\n    *   `due_soon_count: 0` -> No specific insight needed.\n    *   `due_this_week_count: 2` -> Actionable insight possible. URL: `/tasks/?quick=due_week`. Tone: `default` or `indigo`.\n    *   `done_recently_count: 2` -> Positive reinforcement. URL: `/tasks/?status=done`. Tone: `emerald`.\n    *   `high_no_due_count: 0` -> No insight needed.\n\n    *   *Insight 1 (Overdue):*\n        *   type_label: \"Alert\"\n        *   title: \"Overdue Task\"\n        *   description: \"You have 1 task that is past its deadline.\"\n        *   timestamp: \"2023-10-27T10:00:00Z\" (Dummy timestamp)\n        *   action_label: \"View overdue\"\n        *   action_url: \"/tasks/?quick=overdue\"\n        *   tone: \"primary\"\n\n    *   *Insight 2 (Due this week):*\n        *   type_label: \"Reminder\"\n        *   title: \"Upcoming Tasks\"\n        *   description: \"2 tasks are due later this week.\"\n        *   timestamp: \"2023-10-27T10:00:00Z\"\n        *   action_label: \"View week\"\n        *   *action_url: \"/tasks/?quick=due_week\"*\n        *   tone: \"indigo\"\n\n    *   *Insight 3 (Done recently):*\n        *   type_label: \"Success\"\n        *   title: \"Great Progress!\"\n        *   description: \"You've completed 2 tasks recently.\"\n        *   timestamp: \"2023-10-27T10:00:00Z\"\n        *   action_label: \"See completed\"\n        *   action_url: \"/tasks/?status=done\"\n        *   tone: \"emerald\"\n\n    *   Check keys: `type_label`, `title`, `description`, `timestamp`, `action_label`, `action_url`, `tone`. (Yes)\n    *   Check tones: `primary`, `indigo`, `emerald`. (Yes)\n    *   Check URLs: `/tasks/?quick=overdue`, `/tasks/?quick=due_week`, `/tasks/?status=done`. (Yes)\n    *   No markdown. (Yes)\n    *   Format: Array of objects.\n\n    ```json\n    [\n      {\n        \"type_label\": \"Alert\",\n        \"title\": \"Overdue Task\",\n        \"description\": \"You have 1 task that is past its deadline.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"Review now\",\n        \"action_url\": \"/tasks/?quick=overdue\",\n        \"tone\": \"primary\"\n      },\n      {\n        \"type_label\": \"Reminder\",\n        \"title\": \"Weekly Schedule\",\n        \"description\": \"You have 2 tasks due this week.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"View tasks\",\n        \"action_url\": \"/tasks/?quick=due_week\",\n        \"tone\": \"indigo\"\n      },\n      {\n        \"type_label\": \"Achievement\",\n        \"title\": \"Recent Progress\",\n        \"description\": \"You've successfully completed 2 tasks recently.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"View completed\",\n        \"action_url\": \"/tasks/?status=done\",\n        \"tone\": \"emerald\"\n      }\n    ]\n    ```\n\n    *Self-Correction during drafting:* The prompt says return *ONLY* JSON. No triple backticks? Usually, LLM responses use backticks for JSON, but the instruction \"Return ONLY JSON, no markdown\" is very explicit. I will provide the raw JSON.\n\n    *Checking constraints again:*\n    \"Allowed action_url values only: /tasks/?quick=overdue, /tasks/?quick=due_week, /tasks/?status=done, /tasks/?quick=high_priority.\"\n    Everything looks correct.\n\n    *Final selection of insights:*\n    1. Overdue (Count 1) -> URL `/tasks/?quick=overdue`\n    2. Due this week (Count 2) -> URL `/tasks/?quick=due_week`\n    3. Done recently (Count 2) -> URL `/tasks/?status=done`\n\n    Total 3 insights.\n\n    *Wait, I must ensure the output is valid JSON without any surrounding text.*\n\n    *One last check on the timestamp:* It's not specified what format, so ISO 8601 is standard.\n\n    *Check keys again:* type_label, title, description, timestamp, action_label, action_url, tone. (Matches).\n\n    *Check tones:* primary, indigo, emerald. (Matches).",
+      "images": null,
+      "tool_name": null,
+      "tool_calls": null
+    },
+    "logprobs": null
+  }
+}

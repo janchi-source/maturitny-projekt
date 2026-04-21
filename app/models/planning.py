@@ -128,34 +128,26 @@ class ProjectMembership(db.Model):
     user = db.relationship("User", back_populates="project_memberships")
 
 
-class TaskWatcher(db.Model):
-    __tablename__ = "task_watchers"
-    __table_args__ = (
-        db.UniqueConstraint("task_id", "user_id", name="uq_task_watcher"),
-    )
-
-    id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-
-    task = db.relationship("Task", backref="watchers")
-    user = db.relationship("User", back_populates="task_watchers")
-
-
-class ProjectWatcher(db.Model):
-    __tablename__ = "project_watchers"
+class Watcher(db.Model):
+    __tablename__ = "watchers"
     __table_args__ = (
         db.UniqueConstraint("project_id", "user_id", name="uq_project_watcher"),
+        db.UniqueConstraint("task_id", "user_id", name="uq_task_watcher"),
+        db.CheckConstraint(
+            "(project_id IS NOT NULL AND task_id IS NULL) OR (project_id IS NULL AND task_id IS NOT NULL)",
+            name="ck_watcher_target",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
-    project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id", ondelete="CASCADE"), nullable=True)
+    task_id = db.Column(db.Integer, db.ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     project = db.relationship("Project", back_populates="watchers")
-    user = db.relationship("User", back_populates="project_watchers")
+    task = db.relationship("Task", back_populates="watchers")
+    user = db.relationship("User", back_populates="watchers")
 
 
 class AutomationRule(db.Model):

@@ -1,0 +1,55 @@
+{
+  "timestamp_utc": "2026-04-21T13:02:41.580319Z",
+  "kind": "chat",
+  "request": {
+    "model": "gemma4:26b",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful AI assistant for ProMat, a project management tool. Be concise, clear, and professional.\n\n---\n\nDocument: \"poznamky_ann.pdf\"\nType: pdf\nProject: stone\nUploaded by: admin\nVersion: 1\n\nContent:\n1\nNeurónové siete (ANN)\nOkruhy 2+3+4 · Poznámky ku skúške · UMI\nUmelý neurón – matematický model a výpočet\nBiologická inšpirácia\n–Umelý neurón modeluje správanie biologického neurónu.\n–Príjima vstupy, váhuje ich, sčíta a pošle na výstup cez aktivačnú funkciu.\nFormálny model (McCulloch–Pitts)\n–Vstupy: x_1, x_2, \\ldots, x_n\n–Váhy: w_1, w_2, \\ldots, w_n (naučené parametry)\n–Bias: b – posun prahu, naučený parameter\n–Vážená suma: z = \\sum_{i} w_i x_i + b = \\mathbf{w}^T \\mathbf{x} + b\n–Výstup: a = f(z), kde f je aktivačná funkcia\nÚloha váh a biasu\n–Váha w_i určuje, ako silno daný vstup ovplyvňuje výstup.\n–Bias b umožňuje posunúť aktivačnú funkciu – neurón sa aktivuje aj bez vstupu.\n–Bez biasu by neurón musel prechádzať počiatkom, čo obmedzuje vyjadriteľnosť.\nVýstup neurónu\n–Pre skrytú vrstvu: typicky ReLU, tanh...\n–Pre výstupnú vrstvu: závisí od úlohy (sigmoid, softmax, lineárna)\nVrstvové zapojenie\n–Vstupná vrstva → 1..N skrytých vrstiev → výstupná vrstva.\n–Každý neurón vo vrstve l je prepojený s každým neurónom vrstvy l-1 (fully connected).\nAktivačné funkcie\nPrečo aktivačná funkcia?\n–Bez nej by sieť bola len lineárna transformácia, bez ohľadu na počet vrstiev.\n–Nelinearity umožňujú sieťam aproximovať ľubovoľnú funkciu.\nSigmoid (logistická funkcia)\n–\\sigma(z) = \\frac{1}{1 + e^{-z}}, výstup \\in (0, 1)\n–Unipolárna – kladné hodnoty\n–Vhodná pre binárnu klasifikáciu (výstupná vrstva)\n–Nevýhody: problém miznúceho gradientu (vanishing gradient) pri hlbokých sieťach, výstup nie je\ncentrovný na nule.\nTanh (hyperbolický tangens)\n\n2\n–\\tanh(z) = \\frac{e^z - e^{-z}}{e^z + e^{-z}}, výstup \\in (-1, 1)\n–Bipolárna, symetrická – centrovná na nule → lepšia ako sigmoid pre skryté vrstvy\n–Stále trpí vanishing gradient v extrémnych hodnotách.\nReLU (Rectified Linear Unit)\n–f(z) = \\max(0, z)\n–Jednoduchá, rýchla, efektívna pre hlboké siete\n–Žiadny vanishing gradient pre kladné hodnoty\n–Problém: dying ReLU – neuróny s trvale záporným vstupom majú nulový gradient a „odumrú\"\nLeaky ReLU\n–f(z) = z ak z > 0, inak \\alpha z (napr. \\alpha = 0.01)\n–Opravuje dying ReLU – záporné hodnoty majú malý, ale nenulový gradient.\nELU (Exponential Linear Unit)\n–Hladká verzia Leaky ReLU, lepšia konvergencia, no pomalší výpočet.\nSoftmax\n–\\text{softmax}(z_i) = \\frac{e^{z_i}}{\\sum_j e^{z_j}}, výstup \\in (0,1), súčet = 1\n–Používa sa výlučne vo výstupnej vrstve pri viactriednej klasifikácii.\n–Interpretácia: pravdepodobnostné rozdelenie cez triedy.\nPrehľad vhodnosti\n–Skryté vrstvy FNN/CNN: ReLU (alebo Leaky ReLU)\n–Výstup pri binárnej klasifikácii: sigmoid\n–Výstup pri viactriednej klasifikácii: softmax\n–Výstup pri regresii: lineárna (bez aktivácie)\n–RNN / rekurentné siete: tanh (centrovnosť pomáha stabilite)\nDopredný výpočet, stratová funkcia a chyba\nDopredný výpočet (Forward pass)\n–Pre vrstvu l: \\mathbf{z}^{(l)} = W^{(l)} \\mathbf{a}^{(l-1)} + \\mathbf{b}^{(l)}\n–\\mathbf{a}^{(l)} = f(\\mathbf{z}^{(l)})\n–Vstup \\mathbf{x} prechádza vrstvami až po výstup \\hat{y}.\nMaticový zápis pre dávku (batch)\n–Vstupná matica X \\in \\mathbb{R}^{N \\times d} (N príkladov, d príznakov)\n–Pre vrstvu: Z = X W^T + \\mathbf{b} (broadcasting biasu)\n–Umožňuje paralelné spracovanie celého batchu na GPU.\nStratová funkcia (Loss function)\n–Meria, ako ďaleko je predikcia \\hat{y} od skutočnej hodnoty y.\n–Je to to, čo minimalizujeme počas tréningu.\nMSE (Mean Squared Error) – pre regresiu\n–L = \\frac{1}{N} \\sum_{i=1}^N (\\hat{y}_i - y_i)^2\n\n3\n–Citlivá na odľahlé hodnoty (outliers) – kvadratický trest.\nMAE (Mean Absolute Error) – pre regresiu\n–L = \\frac{1}{N} \\sum_i |\\hat{y}_i - y_i|\n–Robustnejšia voči outlierom.\nBinary Cross-Entropy – binárna klasifikácia\n–L = -\\frac{1}{N} \\sum_i [y_i \\log \\hat{y}_i + (1-y_i)\\log(1-\\hat{y}_i)]\n–Výstupná vrstva: sigmoid.\nCategorical Cross-Entropy – viactriedna klasifikácia\n–L = -\\frac{1}{N} \\sum_i \\sum_c y_{i,c} \\log \\hat{y}_{i,c}\n–Výstupná vrstva: softmax.\nChyba (metric) vs. stratová funkcia\n–Stratová funkcia: diferencovateľná funkcia, ktorú backprop minimalizuje (napr. cros"
+      },
+      {
+        "role": "user",
+        "content": "@[doc:1:poznamky_ann.pdf] o com je tento dokument?"
+      },
+      {
+        "role": "assistant",
+        "content": "AI unavailable: model requires more system memory (9.1 GiB) than is available (7.7 GiB) (status code: 500)"
+      },
+      {
+        "role": "user",
+        "content": "hi"
+      },
+      {
+        "role": "assistant",
+        "content": "Hello! I am your ProMat assistant. How can I help you with your projects or the ProMat tool today?"
+      },
+      {
+        "role": "user",
+        "content": "@poznamky_ann.pdf can u please sum up this document?"
+      }
+    ],
+    "stream": false
+  },
+  "response": {
+    "model": "gemma4:26b",
+    "created_at": "2026-04-21T13:02:41.5767418Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 90790942100,
+    "load_duration": 208804500,
+    "prompt_eval_count": 1772,
+    "prompt_eval_duration": 4886859400,
+    "eval_count": 1037,
+    "eval_duration": 85009064600,
+    "message": {
+      "role": "assistant",
+      "content": "The document **\"poznamky_ann.pdf\"** consists of study notes regarding **Artificial Neural Networks (ANN)**. It provides a technical overview of the mathematical models, components, and functions used in neural network architectures.\n\nHere is a summary of the key topics covered:\n\n*   **The Artificial Neuron:** It explains the mathematical model inspired by biological neurons. Key components include inputs, weights (which determine input importance), bias (which allows for threshold shifting), and the weighted sum calculation ($z = \\sum w_i x_i + b$).\n*   **Activation Functions:** The document emphasizes that non-linearity is essential for networks to approximate complex functions. It details several types:\n    *   **Sigmoid & Tanh:** Used for specific layers but prone to the \"vanishing gradient\" problem.\n    *   **ReLU (Rectified Linear Unit):** Highly efficient for deep networks but can suffer from \"dying ReLU.\"\n    *   **Leaky ReLU & ELU:** Variants designed to fix the \"dying ReLU\" issue by maintaining a small gradient for negative values.\n    *   **Softmax:** Used specifically in the output layer for multi-class classification to provide probability distributions.\n*   **Forward Pass & Matrix Computation:** It describes how data moves through layers and highlights the use of matrix notation to enable efficient parallel processing (batch processing) on GPUs.\n*   **Loss Functions:** The document outlines how to measure error during training:\n    *   **Regression:** Mean Squared Error (MSE) and Mean Absolute Error (MAE).\n    *   **Classification:** Binary Cross-Entropy (for binary tasks) and Categorical Cross-Entropy (for multi-class tasks).",
+      "thinking": "*   User is asking for a summary of the document \"poznamky_ann.pdf\".\n    *   User context: ProMat AI assistant.\n    *   Document Content: Notes on Artificial Neural Networks (ANN). It covers:\n        *   Artificial Neuron (mathematical model, biological inspiration, weights, bias, activation functions).\n        *   Activation Functions (Sigmoid, Tanh, ReLU, Le/aky ReLU, ELU, Softmax).\n        *   Forward Pass (mathematical notation, batch processing).\n        *   Loss Functions (MSE, MAE, Binary Cross-Entropy, Categorical Cross-Entropy).\n\n    *   A summary should be concise, clear, and professional (as per system instructions).\n    *   Structure:\n        1.  General Topic.\n        2.  Key Sections (Neuron structure, Activation functions, Forward pass/Math, Loss functions).\n        3.  Purpose of the document (exam notes/study material).\n\n    *   *Introduction:* The document contains study notes regarding Artificial Neural Networks (ANN), specifically focusing on their mathematical foundations and components.\n    *   *Section 1: Artificial Neuron:* Explains the model inspired by biological neurons. Key components include inputs, weights ($w$), bias ($b$), and the weighted sum ($z = \\sum w_i x_i + b$).\n    *   *Section 2: Activation Functions:* Discusses why non-linearity is necessary. It lists several functions:\n        *   Sigmoid & Tanh (good for specific layers/tasks but prone to vanishing gradients).\n        *   ReLU & Leaky ReLU (efficient for deep networks, solving the \"dying ReLU\" problem).\n        *   Softmax (for multi-class classification).\n    *   *Section 3: Forward Pass & Matrix Notation:* Explains how data moves through layers using matrix multiplication for efficient batch processing on GPUs.\n    *   *Section 4: Loss Functions:* Describes how error is measured.\n        *   Regression: MSE and MAE.\n        *   Classification: Binary and Categorical Cross-Entropy.\n\n    *   \"The document 'poznamky_ann.pdf' contains lecture notes on **Artificial Neural Networks (ANN)**. It covers the fundamental mathematical models and components used in neural network training and architecture.\n\n    Key topics include:\n    *   **The Artificial Neuron:** A model based on biological neurons that uses weights, bias, and activation functions to process inputs.\n    *   **Activation Functions:** Explains the importance of non-linearity and details various functions like **Sigmoid, Tanh, ReLU, Leaky ReLU, ELU,** and **Softmax**, noting their use cases (e.g., ReLU for hidden layers, Softmax for multi-class output).\n    *   **Forward Pass & Computation:** Describes the mathematical process of data moving through layers using matrix multiplication for efficient batch processing.\n    *   **Loss Functions:** Outlines how error is measured for different tasks, including **MSE** and **MAE** for regression, and **Binary/Categorical Cross-Entropy** for classification.\"\n\nDoes it meet the persona? Yes. Is it accurate? Yes. Is it concise? Yes.",
+      "images": null,
+      "tool_name": null,
+      "tool_calls": null
+    },
+    "logprobs": null
+  }
+}

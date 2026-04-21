@@ -1,5 +1,6 @@
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import or_
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..cache_helpers import warm_cache_for_user
@@ -21,11 +22,16 @@ def login():
         return redirect(url_for("dashboard.index"))
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
+        identifier = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         remember_me = request.form.get("remember_me") == "on"
 
-        user = User.query.filter_by(email=email).first()
+        user = User.query.filter(
+            or_(
+                User.email == identifier,
+                User.username == identifier,
+            )
+        ).first()
         if user and check_password_hash(user.password_hash, password):
             login_user(user, remember=remember_me)
             warm_cache_for_user(user.id)

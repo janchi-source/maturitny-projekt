@@ -36,7 +36,7 @@ from ..models.planning import (
     SprintStatus,
     TaskBoardSetting,
     TaskSavedFilter,
-    TaskWatcher,
+    Watcher,
 )
 from ..cache_helpers import get_labels_dropdown, get_projects_dropdown, get_users_dropdown
 from ..models.project import Project
@@ -342,6 +342,7 @@ def create():
         _log_activity(task, "task_created", "Task created")
         _notify_assignment_if_needed(task, previous_assignee_id=None)
         _notify_due_date_if_needed(task, previous_due_date=None)
+        _refresh_project_progress(task.project_id)
 
         db.session.commit()
         flash("Task created successfully.", "success")
@@ -376,7 +377,7 @@ def detail(task_id):
             joinedload(Task.attachments).joinedload(TaskAttachment.uploader),
             joinedload(Task.blocking_tasks),
             joinedload(Task.blocked_tasks),
-            joinedload(Task.watchers).joinedload(TaskWatcher.user),
+            joinedload(Task.watchers).joinedload(Watcher.user),
         )
         .filter(Task.id == task_id)
         .first_or_404()
@@ -393,7 +394,7 @@ def detail(task_id):
     completion_total = len(task.checklist_items)
     completion_done = sum(1 for item in task.checklist_items if item.is_done)
 
-    current_watching = TaskWatcher.query.filter_by(task_id=task.id, user_id=current_user.id).first() is not None
+    current_watching = Watcher.query.filter_by(task_id=task.id, user_id=current_user.id).first() is not None
 
     next_url = request.args.get("next", "").strip()
 
@@ -421,12 +422,12 @@ def toggle_watch(task_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.VIEWER)
 
-    watcher = TaskWatcher.query.filter_by(task_id=task.id, user_id=current_user.id).first()
+    watcher = Watcher.query.filter_by(task_id=task.id, user_id=current_user.id).first()
     if watcher:
         db.session.delete(watcher)
         flash("Stopped watching task.", "info")
     else:
-        db.session.add(TaskWatcher(task_id=task.id, user_id=current_user.id))
+        db.session.add(Watcher(task_id=task.id, user_id=current_user.id))
         flash("Now watching task.", "success")
 
     db.session.commit()
@@ -474,6 +475,10 @@ def edit(task_id):
             _run_automation_rules(task, changed_fields)
             _notify_assignment_if_needed(task, previous.get("assignee_id"))
             _notify_due_date_if_needed(task, previous.get("due_date"))
+            _refresh_project_progress(task.project_id)
+            previous_project_id = previous.get("project_id")
+            if previous_project_id and previous_project_id != task.project_id:
+                _refresh_project_progress(previous_project_id)
 
         db.session.commit()
         flash("Task updated successfully.", "success")
@@ -516,6 +521,10 @@ def quick_update(task_id):
         _run_automation_rules(task, changed_fields)
         _notify_assignment_if_needed(task, previous.get("assignee_id"))
         _notify_due_date_if_needed(task, previous.get("due_date"))
+        _refresh_project_progress(task.project_id)
+        previous_project_id = previous.get("project_id")
+        if previous_project_id and previous_project_id != task.project_id:
+            _refresh_project_progress(previous_project_id)
         db.session.commit()
 
     if request.is_json:
@@ -565,6 +574,8 @@ def bulk_action():
             if _unfinished_blockers(task) and status_value in {TaskStatus.IN_REVIEW, TaskStatus.DONE}:
                 continue
             task.status = status_value
+            if status_value == TaskStatus.DONE:
+                task.progress = 100
             _log_activity(task, "bulk_status_changed", f"Bulk status set to {status_value.value}")
     elif action == "label":
         label_raw = request.form.get("bulk_label", "").strip()
@@ -573,11 +584,18 @@ def bulk_action():
             _set_task_labels(task, combined)
             _log_activity(task, "bulk_label_updated", "Bulk label action")
     elif action == "delete":
+        affected_project_ids = {task.project_id for task in tasks}
         for task in tasks:
             db.session.delete(task)
+        for project_id in affected_project_ids:
+            _refresh_project_progress(project_id)
     else:
         flash("Unsupported bulk action.", "error")
         return redirect(url_for("tasks.index"))
+
+    if action == "status":
+        for project_id in {task.project_id for task in tasks}:
+            _refresh_project_progress(project_id)
 
     db.session.commit()
     flash("Bulk action executed.", "success")
@@ -589,7 +607,9 @@ def bulk_action():
 def delete(task_id):
     task = Task.query.get_or_404(task_id)
     _require_project_role(task.project_id, ProjectMembershipRole.MANAGER)
+    project_id = task.project_id
     db.session.delete(task)
+    _refresh_project_progress(project_id)
     db.session.commit()
     flash("Task deleted.", "info")
     return redirect(url_for("tasks.index"))
@@ -624,12 +644,15 @@ def update_status(task_id):
 
     previous_status = task.status
     task.status = requested_status
+    if requested_status == TaskStatus.DONE:
+        task.progress = 100
     _log_activity(task, "status_changed", f"Status changed to {requested_status.value}")
     _run_automation_rules(task, ["status"])
 
     if previous_status != requested_status:
         _notify_watchers(task, "Task status changed", f"{task.title} moved to {requested_status.value}.")
 
+    _refresh_project_progress(task.project_id)
     db.session.commit()
     return jsonify({"success": True, "task_id": task.id, "status": task.status.value})
 
@@ -1256,6 +1279,7 @@ def review_task(task_id):
 
     if decision == "approve":
         task.status = TaskStatus.DONE
+        task.progress = 100
         action_text = "approved"
         message = f"Task '{task.title}' was approved."
     elif decision == "request_changes":
@@ -1274,6 +1298,7 @@ def review_task(task_id):
     if task.assignee_id and task.assignee_id != current_user.id:
         _notify_user(task.assignee_id, "Task review update", message, kind="review")
 
+    _refresh_project_progress(task.project_id)
     db.session.commit()
     flash(f"Task {action_text}.", "success")
     return redirect(next_url if next_url.startswith("/") else url_for("tasks.reviews"))
@@ -1301,6 +1326,7 @@ def submit_for_review(task_id):
 
     task.status = TaskStatus.IN_REVIEW
     _log_activity(task, "review_requested", "Task submitted for review")
+    _refresh_project_progress(task.project_id)
     db.session.commit()
 
     flash("Task sent to review queue.", "success")
@@ -1628,6 +1654,11 @@ def _apply_task_updates(task, payload, allow_partial):
             task.progress = progress
             changed_fields.append("progress")
 
+    if task.status == TaskStatus.DONE and task.progress != 100:
+        task.progress = 100
+        if "progress" not in changed_fields:
+            changed_fields.append("progress")
+
     if "labels" in payload:
         labels_changed = _set_task_labels(task, payload.get("labels"))
         if labels_changed:
@@ -1722,6 +1753,32 @@ def _safe_progress(value):
         return 0
 
     return max(0, min(progress, 100))
+
+
+def _refresh_project_progress(project_id):
+    project = db.session.get(Project, int(project_id)) if project_id is not None else None
+    if project is None:
+        return
+
+    tasks = Task.query.filter_by(project_id=project.id).all()
+    if not tasks:
+        project.progress = 0
+        return
+
+    status_defaults = {
+        TaskStatus.TODO: 0,
+        TaskStatus.IN_PROGRESS: 50,
+        TaskStatus.IN_REVIEW: 75,
+        TaskStatus.DONE: 100,
+    }
+
+    total = 0
+    for task in tasks:
+        explicit_progress = max(0, min(int(getattr(task, "progress", 0) or 0), 100))
+        status_progress = status_defaults.get(task.status, 0)
+        total += max(explicit_progress, status_progress)
+
+    project.progress = round(total / len(tasks))
 
 
 def _safe_int_nullable(value):

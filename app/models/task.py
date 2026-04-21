@@ -145,6 +145,7 @@ class Task(db.Model):
         cascade="all, delete-orphan",
         order_by="TaskAttachment.created_at.desc()",
     )
+    watchers = db.relationship("Watcher", back_populates="task", cascade="all, delete-orphan")
     blocked_tasks = db.relationship(
         "Task",
         secondary=task_dependencies,

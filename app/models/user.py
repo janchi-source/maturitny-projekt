@@ -80,8 +80,7 @@ class User(UserMixin, db.Model):
     notifications = db.relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     api_tokens = db.relationship("ApiToken", back_populates="user", cascade="all, delete-orphan")
     project_memberships = db.relationship("ProjectMembership", back_populates="user", cascade="all, delete-orphan")
-    task_watchers = db.relationship("TaskWatcher", back_populates="user", cascade="all, delete-orphan")
-    project_watchers = db.relationship("ProjectWatcher", back_populates="user", cascade="all, delete-orphan")
+    watchers = db.relationship("Watcher", back_populates="user", cascade="all, delete-orphan")
     managed_role_assignment = db.relationship(
         "UserManagedRole",
         back_populates="user",

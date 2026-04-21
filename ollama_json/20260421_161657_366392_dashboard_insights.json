@@ -1,0 +1,35 @@
+{
+  "timestamp_utc": "2026-04-21T16:16:57.367740Z",
+  "kind": "dashboard_insights",
+  "request": {
+    "model": "gemma4:26b",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Generate 1-4 actionable dashboard insights as JSON.\nReturn ONLY JSON, no markdown.\nUse schema keys exactly: type_label,title,description,timestamp,action_label,action_url,tone.\nAllowed tones: default, primary, indigo, emerald.\nAllowed action_url values only: /tasks/?quick=overdue, /tasks/?quick=due_week, /tasks/?status=done, /tasks/?quick=high_priority.\n\nMetrics:\n{\"overdue_count\": 1, \"due_soon_count\": 0, \"due_this_week_count\": 2, \"done_recently_count\": 2, \"high_no_due_count\": 0}"
+      }
+    ],
+    "stream": false
+  },
+  "response": {
+    "model": "gemma4:26b",
+    "created_at": "2026-04-21T16:16:57.3354442Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 161058046300,
+    "load_duration": 1193333600,
+    "prompt_eval_count": 170,
+    "prompt_eval_duration": 19943848100,
+    "eval_count": 1604,
+    "eval_duration": 138397687100,
+    "message": {
+      "role": "assistant",
+      "content": "[\n  {\n    \"type_label\": \"alert\",\n    \"title\": \"Overdue Task\",\n    \"description\": \"You have 1 task that is past its deadline.\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"Review overdue\",\n    \"action_url\": \"/tasks/?quick=overdue\",\n    \"tone\": \"primary\"\n  },\n  {\n    \"type_label\": \"info\",\n    \"title\": \"Weekly Schedule\",\n    \"description\": \"You have 2 tasks approaching their deadlines this week.\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"View upcoming\",\n    \"action_url\": \"/tasks/?quick=due_week\",\n    \"tone\": \"default\"\n  },\n  {\n    \"type_label\": \"success\",\n    \"title\": \"Recent Completion\",\n    \"description\": \"Great job! You have finished 2 tasks recently.\",\n    \"timestamp\": \"2023-10-27T10:00:00Z\",\n    \"action_label\": \"View completed\",\n    \"action_url\": \"/tasks/?status=done\",\n    \"tone\": \"emerald\"\n  }\n]",
+      "thinking": "*   Input: Metrics (`overdue_count: 1`, `due_soon_count: 0`, `due_this_week_count: 2`, `done_recently_count: 2`, `high_no_due_count: 0`).\n    *   Output: 1-4 actionable dashboard insights as JSON.\n    *   Constraints:\n        *   Return ONLY JSON.\n        *   No markdown.\n        *   Schema keys: `type_label`, `title`, `description`, `timestamp`, `action_label`, `action_url`, `tone`.\n        *   Allowed tones: `default`, `primary`, `indigo`, `emerald`.\n        *   Allowed action_urls: `/tasks/?quick=overdue`, `/tasks/?quick=due_week`, `/tasks/?status=done`, `/tasks/?quick=high_priority`.\n\n    *   `overdue_count: 1` -> Needs attention. URL: `/tasks/?quick=overdue`. Tone: `primary` (or `default`).\n    *   `due_this_week_count: 2` -> Upcoming tasks. URL: `/tasks/?quick=due_week`. Tone: `default`.\n    *   `done_recently_count: 2` -> Accomplishment. URL: `/tasks/?status=done`. Tone: `emerald`.\n    *   `high_no_due_count: 0` -> Not applicable.\n    *   `due_soon_count: 0` -> Not applicable.\n\n    *   *Insight 1 (Overdue):*\n        *   `type_label`: \"alert\"\n        *   `title`: \"Overdue Task\"\n        *   `description`: \"You have 1 task that is past its deadline.\"\n        *   `timestamp`: \"2023-10-27T10:00:00Z\" (use current/generic)\n        *   `action_label`: \"Review overdue\"\n        *   `action_url`: \"/tasks/?quick=overdue\"\n        *   `tone`: \"primary\"\n\n    *   *Insight 2 (Due this week):*\n        *   `type_label`: \"info\"\n        *   `title`: \"Upcoming Deadlines\"\n        *   `description`: \"You have 2 tasks due later this week.\"\n        *   `timestamp`: \"2023-10-27T10:00:00Z\"\n        *   `action_label`: \"View schedule\"\n        *   `action_url`: \"/tasks/?quick=due_week\"\n        *   `tone`: \"default\"\n\n    *   *Insight 3 (Done):*\n        *   `type_label`: \"success\"\n        *   `title`: \"Recent Progress\"\n        *   `description`: \"Great job! You've completed 2 tasks recently.\"\n        *   `timestamp`: \"2023-10-27T10:00:00Z\"\n        *   `action_label`: \"View completed\"\n        *   `action_url`: \"/tasks/?status=done\"\n        *   `tone`: \"emerald\"\n\n    *   `type_label`: Check.\n    *   `title`: Check.\n    *   `description`: Check.\n    *   `timestamp`: Check.\n    *   `action_label`: Check.\n    *   `action_url`: Check.\n    *   `tone`: Check.\n    *   No markdown.\n    *   No other text.\n\n    ```json\n    [\n      {\n        \"type_label\": \"alert\",\n        \"title\": \"Overdue Task\",\n        \"description\": \"You have 1 task that is past its deadline.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"Review overdue\",\n        \"action_url\": \"/tasks/?quick=overdue\",\n        \"tone\": \"primary\"\n      },\n      {\n        \"type_label\": \"info\",\n        \"title\": \"Weekly Forecast\",\n        \"description\": \"There are 2 tasks due by the end of this week.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"View upcoming\",\n        \"action_url\": \"/tasks/?quick=due_week\",\n        \"tone\": \"default\"\n        },\n      {\n        \"type_label\": \"success\",\n        \"title\": \"Recent Achievements\",\n        \"description\": \"You have successfully finished 2 tasks recently.\",\n        \"timestamp\": \"2023-10-27T14:30:00Z\",\n        \"action_label\": \"View completed\",\n        \"action_url\": \"/tasks/?status=done\",\n        \"tone\": \"emerald\"\n      }\n    ]\n    ```\n\n    *Self-Correction*: Ensure no markdown backticks.\n\n    *Final Check of Constraints*:\n    - `overdue_count: 1` -> Used.\n    - `due_this_week_count: 2` -> Used.\n    - `done_recently_count: 2` -> Used.\n    - `action_url` values: `/tasks/?quick=overdue`, `/tasks/?quick=due_week`, `/tasks/?status=done` (All allowed).\n    - `tone` values: `primary`, `default`, `emerald` (All allowed).\n\n    Final check on keys: `type_label`, `title`, `description`, `timestamp`, `action_label`, `action_url`, `tone`. All present.",
+      "images": null,
+      "tool_name": null,
+      "tool_calls": null
+    },
+    "logprobs": null
+  }
+}

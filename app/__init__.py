@@ -157,8 +157,14 @@ def create_app(config_class=Config):
         cache.clear()
 
     with app.app_context():
-        init_db()
-        ensure_builtin_admin(app)
+        try:
+            init_db()
+            ensure_builtin_admin(app)
+        except Exception as exc:
+            if os.getenv("VERCEL"):
+                app.logger.exception("Startup bootstrap skipped on Vercel: %s", exc)
+            else:
+                raise
 
     return app
 
